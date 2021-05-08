@@ -268,9 +268,7 @@ def Get_Color(scene, obj, hit_v, V, depth, bias = 0.0001):
 		c1 = scene.reflections
 		c2 = (depth < scene.depth)
 		if c1 and c2:
-			refl_col,smpf = Color(0,0,0), 1
-			if obj.material.roughness:
-				smpf = scene.samples
+			refl_col = Color(0,0,0)
 				
 			for rE in range(smpf):
 				refl_O, refl_V = shader.reflect(N,L)
@@ -278,7 +276,7 @@ def Get_Color(scene, obj, hit_v, V, depth, bias = 0.0001):
 					ic_col = Get_Color(scene, refl_O, refl_V, V, depth+1)
 					if ic_col:
 						refl_col += ic_col
-			surf_col += refl_col *((1-obj.material.roughness)/smpf)		
+			surf_col += refl_col *(1/scene.samples)		
 		return surf_col
 		
 
