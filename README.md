@@ -5,6 +5,9 @@ This is a simple implementation of a Ray Tracer in Python 3.
 ## Dependencies
 i. PILLOW
 
+## Instructions
+If you want to complie this, just run ___main.py___, and if you want to make changes to the scene, edit ___Spheres.py___
+
 ## Features
 ### Shading
 * Diffuse Shading (Lambert)
