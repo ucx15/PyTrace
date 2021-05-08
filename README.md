@@ -33,7 +33,8 @@ i. PILLOW
 Some Limitations will be removed in coming days..
 I did this as a fun project to increase my knowledge in Python(especially OOP)
 
-THIS IS NOT A SERIOUS PROJECT THAT WILL OVERTAKE ARNOLD OR CYCLES! (I've got plans for that too ;) )
+_THIS IS NOT A SERIOUS PROJECT THAT WILL OVERTAKE ARNOLD OR CYCLES!_
+I've got plans for that too ;) 
 
-Thanks for reading!
+___Thanks for reading!___
 You can also contribute and improve by pulling a request
