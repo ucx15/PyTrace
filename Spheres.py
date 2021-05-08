@@ -15,7 +15,7 @@ gp = Plane(Vec(0,0,-BR-.01), Vec(0,0,1))
 
 #materials
 dielec_red = Material(ball1col)
-dielec_red.roughness = .01
+dielec_red.roughness = .05
 dielec_red.type = "DIFF + GLOSS"
 
 dielec_blue = Material(ball3col)
@@ -47,15 +47,10 @@ c_up = Vec(0,0,1)
 c_fov = 8
 
 
-cam = Camera(c_loc,
-							c_at,
-							c_up,
-							c_fov,
-							W,H)
+cam = Camera(c_loc,c_at,c_up,c_fov,W,H)
 
 ##__SCENE__##
 scene_data = Scene(obj_lst, cam, light_lst, W,H)
 
 scene_data.reflections = 1
 scene_data.samples = 2
-#scene_data.depth = 2
