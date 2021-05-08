@@ -1,10 +1,9 @@
 from rt_lib import *
 
-W, H =  1000, 600
+W, H =  100, 60
 
 #__Objects
 BR = 1.95
-#Gpr = 99999
 ball1col = Color(1,0,0)
 ball2col = Color(0,0,1)
 ball3col = Color(0,0,1)
@@ -12,7 +11,6 @@ ball3col = Color(0,0,1)
 ball1 = Sphere(Vec(-4,0,0), BR)
 ball2 = Sphere(Vec(0,0,0), BR)
 ball3 = Sphere(Vec(4,0,0), BR)
-#gp = Sphere(Vec(0,0,-Gpr-BR-0.1), Gpr)
 gp = Plane(Vec(0,0,-BR-.01), Vec(0,0,1))
 
 #materials
@@ -59,5 +57,5 @@ cam = Camera(c_loc,
 scene_data = Scene(obj_lst, cam, light_lst, W,H)
 
 scene_data.reflections = 1
-scene_data.samples = 24
+scene_data.samples = 2
 #scene_data.depth = 2
