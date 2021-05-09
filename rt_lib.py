@@ -88,10 +88,11 @@ class Color:
 
 
 class Material:
-	def __init__(self, col=Color(.2, .2, .2)):
+	def __init__(self, col=Color(1,1,1)):
 		self.color = col
 		self.roughness = 1
 		self.type = None
+		self.adpt_smpls = 0
 		
 	def spec_const(self):
 		return  (350 * (1 - self.roughness))
@@ -160,6 +161,8 @@ class Sphere:
 		d = b**2 - 4*c
 		if d >= 0:
 			return (-b - (d)**.5)/2
+		else:
+			return None
 			
 	def normal(self, v):
 		return Vec((v.i - self.loc.i), (v.j - self.loc.j), (v.k - self.loc.k)).normalize()
@@ -175,7 +178,9 @@ class Plane:
 		ang = self.n.dot(ray.dir)
 		if ang:
 			return (((self.loc - ray.loc).dot(self.n)) / ang)
-	
+		else:
+			return None
+
 	def normal(self, v):
 		return self.n
 
@@ -206,6 +211,8 @@ class Shader:
 			hit_pos = obj.intersect(sdw_ray)
 			if hit_pos and hit_pos > self.bias:
 				return 1
+		else:
+			return None
 
 		
 	def reflect(self,N,L):
@@ -265,49 +272,52 @@ def Get_Color(scene, obj, hit_v, V, depth, bias = 0.0001):
 				surf_col += shader.diffuse(N,L)
 		
 		#_Reflections
-		c1 = scene.reflections
-		c2 = (depth < scene.depth)
-		if c1 and c2:
-			refl_col = Color(0,0,0)
-				
-			for _ in range(scene.samples):
+		cond = scene.reflections and (depth < scene.depth)
+		if cond:
+			refl_col,rng = Color(0,0,0), scene.samples
+			if obj.material.adpt_smpls:
+				rng = 1
+			for _ in range(rng):
 				refl_O, refl_V = shader.reflect(N,L)
 				if refl_O:
 					ic_col = Get_Color(scene, refl_O, refl_V, V, depth+1)
 					if ic_col:
 						refl_col += ic_col
-			surf_col += refl_col *(1/scene.samples)		
+			surf_col += (refl_col/rng)	
 		return surf_col
+	else:
+		return None
 		
-
-
-def  nearest_hit(scene, ray):
-	min_hit = scene.camera.far_clip
-	n_obj = None
-	
-	for obj in scene.objects:
-		t = obj.intersect(ray)
-				
-		if t and t <= min_hit:
-			min_hit = t
-			n_obj = obj
-				
-	return n_obj, min_hit
 
 
 def render(scene,x,y):
 	
+	def  nearest_hit(objs, f_clip, ray):
+		min_hit = f_clip
+		n_obj = None
+	
+		for obj in objs:
+			t = obj.intersect(ray)
+				
+			if t and t <= min_hit:
+				min_hit = t
+				n_obj = obj
+				
+		return n_obj, min_hit
+
+	
 	x_ray, y_ray = (2*x)/scene.W -1, (2*y)/scene.H -1	
 	cam_ray = scene.camera.cast(scene, x_ray, y_ray)
 		
-	nearest_obj, hit_dist = nearest_hit(scene, cam_ray)
+	nearest_obj, hit_dist = nearest_hit(scene.objects, scene.camera.far_clip, cam_ray)
 				
 	if nearest_obj:
 		hit_vec = (cam_ray.loc + (cam_ray.dir*hit_dist))
 		col = Get_Color(scene, nearest_obj, hit_vec, (cam_ray.loc - hit_vec), 0)
-		if col:
-			return col.to_rgb_q(8, scene.exposure, scene.gamma)
-
+		if col != scene.bkg:
+			return (col.to_rgb_q(8, scene.exposure, scene.gamma))
+		else:
+			return None
 
 
 
@@ -317,7 +327,6 @@ def render_loop(scene, Img):
 		prog = y*100/(scene.H-1)
 		print(round(prog,2),"%", "\r", end="")
 		for x in range(scene.W):
-					
 			col = render(scene,x,y)
 			if col:
 				Img.putpixel((x,y), col)
