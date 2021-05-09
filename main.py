@@ -1,5 +1,5 @@
 from rt_lib import render_loop
-from Spheres import *
+from Scene_files.Spheres import *
 from PIL import Image
 from time import time
 
