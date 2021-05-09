@@ -3,10 +3,10 @@
 This is a simple implementation of a Ray Tracer in Python 3.
 
 ## Dependencies
-i. PILLOW
+* PILLOW
 
 ## Instructions
-If you want to complie this, just run ___main.py___, and if you want to make changes to the scene, edit ___Spheres.py___
+If you want to complie this, just run ___main.py___, and if you want to make changes to the scene, edit ___Spheres.py___ in ___Scene_files___ folder
 
 ## Features
 ### Shading
