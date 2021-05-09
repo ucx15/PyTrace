@@ -270,7 +270,7 @@ def Get_Color(scene, obj, hit_v, V, depth, bias = 0.0001):
 		if c1 and c2:
 			refl_col = Color(0,0,0)
 				
-			for rE in range(smpf):
+			for rE in range(scene.samples):
 				refl_O, refl_V = shader.reflect(N,L)
 				if refl_O:
 					ic_col = Get_Color(scene, refl_O, refl_V, V, depth+1)
