@@ -6,7 +6,7 @@ This is a simple implementation of a Ray Tracer in Python 3.
 * PILLOW
 
 ## Instructions
-If you want to complie this,just download/clone this repo and run ___main.py___, and if you want to make changes to the scene, edit ___Spheres.py___ in ___Scene_files___ folder
+If you want to complie this,just download/clone this repo and run ___main.py___, and if you want to make changes to the scene, edit ___Spheres.py/All_features_Scene.py___ in ___Scene_files___ folder
 
 ## Features
 ### Shading
