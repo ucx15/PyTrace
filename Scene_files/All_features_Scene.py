@@ -23,7 +23,6 @@ white_metal.roughness = 0
 
 red_shiny.type = "DIFF + GLOSS"
 white_metal.type = "GLOSS"
-white_shiny.type = "DIFF + GLOSS"
 
 white_metal.adpt_smpls = True
 
@@ -56,5 +55,5 @@ cam = Camera(c_loc,c_at,c_up,c_fov,W,H)
 scene = Scene(obj_lst, cam, light_lst, W,H)
 
 scene.reflections = True
-scene.samples = 8  #reflection samples (1-128), can be >128 @cost of speed
-scene.depth = 1   #reflection depth (0-2), can be >2 @cost of speed
+scene.samples = 64  #reflection samples (1-128), can be >128 @cost of speed
+scene.depth = 2   #reflection depth (0-2), can be >2 @cost of speed
