@@ -1,6 +1,6 @@
 from rt_lib import *
 
-W, H =  1000, 500
+W, H =  150, 75
 
 #__OBJECTS
 
@@ -18,12 +18,14 @@ white_metal = Material()
 white_diffused = Material()
 blue_diffused = Material(Color(0,.07, 1))
 
-red_shiny.roughness = 0.08
-red_shiny.type = "DIFF + GLOSS"
-
+red_shiny.roughness = 0.1
 white_metal.roughness = 0
+
+red_shiny.type = "DIFF + GLOSS"
 white_metal.type = "GLOSS"
-white_metal.adpt_smpls = 1
+white_shiny.type = "DIFF + GLOSS"
+
+white_metal.adpt_smpls = True
 
 Sp1.material = white_metal
 Sp2.material = red_shiny
@@ -34,12 +36,11 @@ obj_lst = [Sp1, Sp2, Sp3, Sp4]
 
 
 #_LIGHTS
-L1 = Light(Vec(-10, -20, 20), 8000) #Key
-L2 = Light(Vec(0,-20,1), 150)       #Fill
+L1 = Light(Vec(-10, -20, 20), 8000)     #Key
+L2 = Light(Vec(0,-20,1), 150) #Fill
 L1.shadows = 1
 
 light_lst = [L1, L2]
-
 
 #_CAMERA
 c_loc = Vec(0, -10, 2)
@@ -52,8 +53,8 @@ cam = Camera(c_loc,c_at,c_up,c_fov,W,H)
 
 ##__SCENE__##
 
-scene_data = Scene(obj_lst, cam, light_lst, W,H)
+scene = Scene(obj_lst, cam, light_lst, W,H)
 
-scene_data.reflections = 1
-scene_data.samples = 180
-scene_data.depth = 2
+scene.reflections = True
+scene.samples = 8  #reflection samples (1-128), can be >128 @cost of speed
+scene.depth = 1   #reflection depth (0-2), can be >2 @cost of speed
