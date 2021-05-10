@@ -328,10 +328,9 @@ def render(scene,x,y):
 def render_loop(scene, Img):
 	
 	for y in range(scene.H):
-
-		print(f"{y}|{scene.H}\r", end="")
-		
 		for x in range(scene.W):
+			print(f"{y}|{scene.H}\t{x}|{scene.W}", end=" \r")
+		
 			col = render(scene,x,y)
 			if col:
 				Img.putpixel((x,y), col)
