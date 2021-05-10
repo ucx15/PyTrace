@@ -92,7 +92,7 @@ class Material:
 		self.color = col
 		self.roughness = 1
 		self.type = None
-		self.adpt_smpls = 0
+		self.adpt_smpls = False
 		
 	def spec_const(self):
 		return  (350 * (1 - self.roughness))
@@ -107,7 +107,7 @@ class Scene:
 		self.W = w
 		self.H = h
 		
-		self.reflections = 0
+		self.reflections = False
 		self.depth = 1
 		self.samples = 1
 		
@@ -130,11 +130,11 @@ class Camera:
 		self.near_clip = 1e-3
 		self.far_clip = 1e5
 		
-		self.img_Ph = tan(radians(self.fov))
-		self.img_Pw = self.img_Ph * W/H		
+		self.img_PlaneH = tan(radians(self.fov))
+		self.img_PlaneW = self.img_PlaneH * W/H		
 	
 	def cast(self,scene,x,y):					
-		ray_dir = self.forw  +  (self.right*(x*self.img_Pw))  +  (self.up*(y*self.img_Ph))		
+		ray_dir = self.forw  +  (self.right*(x*self.img_PlaneW))  +  (self.up*(y*self.img_PlaneH))		
 		return Ray(self.loc, ray_dir.normalize())
 
 
@@ -288,6 +288,10 @@ def Get_Color(scene, obj, hit_v, V, depth, bias = 0.0001):
 	else:
 		return None
 		
+def Minutes(t):
+	s = round((t%60), 4)
+	m = int(t)//60
+	return (f"\n{m}m : {s}s")
 
 
 def render(scene,x,y):
@@ -322,10 +326,11 @@ def render(scene,x,y):
 
 
 def render_loop(scene, Img):
+	
 	for y in range(scene.H):
+
+		print(f"{y}|{scene.H}\r", end="")
 		
-		prog = y*100/(scene.H-1)
-		print(round(prog,2),"%", "\r", end="")
 		for x in range(scene.W):
 			col = render(scene,x,y)
 			if col:
