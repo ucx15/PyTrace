@@ -1,6 +1,6 @@
-from rt_lib import *
+from rt_libM import *
 
-W, H =  150, 75
+W, H =  300, 150
 
 #__OBJECTS
 
@@ -13,25 +13,24 @@ Sp4 = Sphere(Vec(0,0,-BR-99999), 99999) #Plane obj not worked; used sphere as a 
 
 
 #set_materials
-red_shiny = Material(Color(1, 0,0))
-white_metal = Material()
-white_diffused = Material()
-blue_diffused = Material(Color(0,.07, 1))
+red = Material(Color(1, 0,0))
+metal = Material()
+white = Material()
+blue = Material(Color(0,.07, 1))
 
-red_shiny.roughness = 0.1
-white_metal.roughness = 0
+red.roughness = metal.roughness = 0
 
-red_shiny.type = "DIFF + GLOSS"
-white_metal.type = "GLOSS"
 
-white_metal.adpt_smpls = True
+red.type = "DIFF + GLOSS"
+metal.type = "GLOSS"
 
-Sp1.material = white_metal
-Sp2.material = red_shiny
-Sp3.material = blue_diffused
-Sp4.material = white_diffused
 
-obj_lst = [Sp1, Sp2, Sp3, Sp4]
+Sp1.material = metal
+Sp2.material = red
+Sp3.material = blue
+Sp4.material = white
+
+obj_lst = [ Sp1,Sp2, Sp3, Sp4]
 
 
 #_LIGHTS
@@ -55,5 +54,5 @@ cam = Camera(c_loc,c_at,c_up,c_fov,W,H)
 scene = Scene(obj_lst, cam, light_lst, W,H)
 
 scene.reflections = True
-scene.samples = 64  #reflection samples (1-128), can be >128 @cost of speed
+scene.samples = 16 #reflection samples (1-128), can be >128 @cost of speed
 scene.depth = 2   #reflection depth (0-2), can be >2 @cost of speed
