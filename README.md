@@ -23,14 +23,13 @@ If you want to complie this,just download/clone this repo and run ___main.py___,
 * Spheres
 * Planes
 * Perspective Camera
+* Multi-core Rendering (May 13 Update)
 
 ## Current Limitations
 * Sampling available only for reflections, not for shadows and anti-aliasing
 * Only point lights supported
 * No soft shadows
-* Very simple materials (only Diffuse, Glossy or Diffuse+Glossy)
 * No area Lights
-* No file system handling 
 * No GUI
 
 Some Limitations will be removed in coming days..
