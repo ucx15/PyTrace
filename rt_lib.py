@@ -1,6 +1,5 @@
 from math import tan, cosh
 from random import uniform
-from threading import *
 
 
 ##__CONSTANT__##
