@@ -1,6 +1,8 @@
 from math import tan, cosh
 from random import uniform
-
+from PIL import Image
+from multiprocessing import Process, cpu_count
+import os
 
 ##__CONSTANT__##
 PI_4 = 12.566370614359172
@@ -242,7 +244,7 @@ class Shader:
 
 
 ###______FUNCTIONS_____###
-def Get_Color(scene, obj, shader, hit_v, V, depth):
+def Ray_Trace(scene, obj, shader, hit_v, V, depth):
 	
 	if obj and depth <= scene.depth:
 		
@@ -288,22 +290,34 @@ def Get_Color(scene, obj, shader, hit_v, V, depth):
 			for _ in range(smpls_ct):
 				refl_O, refl_V = shader.reflect(N,L)
 				if refl_O:
-					ic_col = Get_Color(scene, refl_O, shader, refl_V, V, depth+1)
+					ic_col = Ray_Trace(scene, refl_O, shader, refl_V, V, depth+1)
 					if ic_col:
 						refl_col += ic_col
 			surf_col += (refl_col/smpls_ct)
 		return surf_col
 	else:
 		return None
-		
+
+def DivideRanges(Q, parts):
+	pSize = Q//parts	
+	st, end = 0, pSize
+	Div_lst = []
+	for _ in range(parts):
+		Div = range(st, end)
+		Div_lst.append(Div)
+		st, end = end, end+pSize
+	if Q-st:
+		Div_lst[parts-1] = range(st-pSize, Q)
+	return Div_lst, pSize
+
+
 def Minutes(t):
 	s = round((t%60), 4)
 	m = int(t)//60
 	return (f"\n{m}m : {s}s")
 
 
-def render(scene,Shdr,x,y):
-	
+def ColorAt(scene,Shdr,x,y):	
 	def  nearest_hit(objs, f_clip, ray):
 		min_hit = f_clip
 		n_obj = None
@@ -325,23 +339,52 @@ def render(scene,Shdr,x,y):
 				
 	if nearest_obj:
 		hit_vec = (cam_ray.loc + (cam_ray.dir*hit_dist))
-		col = Get_Color(scene, nearest_obj, Shdr, hit_vec, (cam_ray.loc - hit_vec), 0)
+		col = Ray_Trace(scene, nearest_obj, Shdr, hit_vec, (cam_ray.loc - hit_vec), 0)
 		return (col.to_rgb_q(8, scene.exposure, scene.gamma))
 	else:
 		return None
 
 
-def render_loop(scene, Img):
+
+def Render(scene, thds=8):
+	
+	
+	#MultiProcessingStuff_for_rendering_parts_of_image
+	def RangeRender(y_lim, t_id, scene, shader):
+		
+		H = 1 + (y_lim[-1] - y_lim[0])
+		i_temp = Image.new("RGB", (scene.W, H))
+		for y in y_lim:
+			
+			for x in range(scene.W):
+				col = ColorAt(scene, shader, x,y)
+				if col:
+					i_temp.putpixel((x, (y-y_lim[0])), (col))					
+		i_temp.save(f".Temp/temp{t_id}.png")
+
+
+	#RenderBody
+	Img = Image.new("RGB", (scene.W, scene.H))	
 	shader = Shader()
 	shader.objects = scene.objects
 	
-	for y in range(scene.H):
-		print(f"{y}|{scene.H}")
-			
-		for x in range(scene.W):
-			print(f"{x}\r", end="")
-			col = render(scene,shader, x,y)
-			if col:
-				Img.putpixel((x,y), col)
-				
+	RngLst,blockH = DivideRanges(scene.H, thds) #divisions of height
+	TaskLst = [] #all_processes
+	
+	print(RngLst)
+	for idx, RO in enumerate(RngLst):
+		p = Process(target=RangeRender, args=(RO, idx, scene, shader))
+		TaskLst.append(p)
+	
+	for task in TaskLst:
+		task.start()
+	for task in TaskLst:
+		task.join()
+	
+	for i in range(len(TaskLst)):
+		file_path = f".Temp/temp{i}.png"
+		im = Image.open(file_path)
+		Img.paste(im,(0, i*blockH))
+		os.remove(file_path)
+	
 	return Img
