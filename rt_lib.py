@@ -1,9 +1,11 @@
-from math import pi, radians, tan, cosh
-from random import *
+from math import tan, cosh
+from random import uniform
+from threading import *
 
 
 ##__CONSTANT__##
-PI_4 = 4*pi
+PI_4 = 12.566370614359172
+
 
 ###_____CLASSES_____###
 
@@ -16,7 +18,7 @@ class Vec:
 		self.mag = (i*i  +  j*j  +  k*k)**.5
 		
 	def __str__(self):
-		return str(self.i) + " "+ str(self.j) +" "+ str(self.k)
+		return f"{round(self.i,2)} {round(self.j,2)} {round(self.k,2)}"
 	def __neg__(self):
 		return Vec(-self.i, -self.j, -self.k)
 	def __add__(self, v):
@@ -24,7 +26,9 @@ class Vec:
 	def __sub__(self, v):
 		return Vec((self.i - v.i), (self.j - v.j), (self.k - v.k))	
 	def __mul__(self, scl):
-		return Vec((self.i*scl), (self.j *scl), (self.k *scl))	
+		return Vec((self.i *scl), (self.j *scl), (self.k *scl))	
+	def __truediv__(self, scl):
+		return Vec((self.i /scl), (self.j /scl), (self.k /scl))
 	def __eq__(self, v):
 		if (self.i == v.i) and (self.j==v.j) and (self.k==v.k):
 			return True
@@ -58,6 +62,8 @@ class Color:
 		self.g = g
 		self.b = b
 	
+	def __str__(self):
+		return f"{self.r} {self.g} {self.b}"
 	def __add__(self, c):
 		return Color((self.r + c.r), (self.g + c.g), (self.b + c.b))
 	def __iadd__(self, c):
@@ -129,8 +135,8 @@ class Camera:
 		self.fov = fov
 		self.near_clip = 1e-3
 		self.far_clip = 1e5
-		
-		self.img_PlaneH = tan(radians(self.fov))
+
+		self.img_PlaneH = tan((0.01745329251994 * self.fov)) #deg to radians(math module slow)
 		self.img_PlaneW = self.img_PlaneH * W/H		
 	
 	def cast(self,scene,x,y):					
@@ -152,7 +158,7 @@ class Sphere:
 		self.loc = loc
 		self.r = r
 		self.material = Material()
-		
+		self.name = "Sphere"
 		
 	def intersect(self, ray):
 		oc = ray.loc - self.loc		
@@ -172,7 +178,7 @@ class Plane:
 		self.loc = loc
 		self.n = n
 		self.material = Material()
-
+		self.name = "Plane"
 
 	def intersect(self, ray):
 		ang = self.n.dot(ray.dir)
@@ -188,21 +194,23 @@ class Plane:
 			
 #__Shader__			
 class Shader:
-	def __init__(self, obj, hit_loc, objs,lc, light_intensity, bias):
-		self.obj = obj
-		self.mat = obj.material
-		self.hit_loc = hit_loc
-		self.objects = objs
-		self.light_color = lc
-		self.light_ints = light_intensity
-		self.bias = bias
+	
+	bias = 0.001
+	
+	def init(self):
+		self.obj = None
+		self.hit_loc = None
+		self.objects = None
+		self.light_color = None
+		self.light_ints = None
+
 	
 	def diffuse(self, N,L):
-		diff_col = self.mat.color * (self.light_ints * max(0, N.dot(L)) ) + (self.mat.color*.001)
+		diff_col = self.obj.material.color * (self.light_ints * max(0, N.dot(L)) ) + (self.obj.material.color*.001)
 		return diff_col
 	
 	def spec(self, N,H):
-		spec_col = self.light_color * (((1-self.mat.roughness)*self.light_ints) * max(0, N.dot(H))**self.mat.spec_const() )
+		spec_col = self.light_color * (((1-self.obj.material.roughness)*self.light_ints) * max(0, N.dot(H))**self.obj.material.spec_const() )
 		return spec_col
 	
 	def shadows(self,L):
@@ -220,7 +228,7 @@ class Shader:
 		Rd = Vec(rn1, rn2, rn3).normalize()
 		R = ( (-L) -  (N *( 2*N.dot(-L))) ).normalize()
 		
-		R_Dir = ((N+Rd)*(self.mat.roughness)) + (R * (1-self.mat.roughness))
+		R_Dir = ((N+Rd)*(self.obj.material.roughness)) + (R * (1-self.obj.material.roughness))
 		R_Dir.normalize()
 		R_Loc = self.hit_loc + (R_Dir*self.bias)	
 		ref_ray = Ray(R_Loc, R_Dir)
@@ -235,14 +243,15 @@ class Shader:
 
 
 ###______FUNCTIONS_____###
-def Get_Color(scene, obj, hit_v, V, depth, bias = 0.0001):
+def Get_Color(scene, obj, shader, hit_v, V, depth):
 	
 	if obj and depth <= scene.depth:
 		
+		shader.obj, shader.hit_loc, shader.mat = obj, hit_v, obj.material
 		N = obj.normal(hit_v)
 		V = V.normalize()
 		surf_col = Color(0,0,0)
-			
+	
 		for light in scene.lights:
 
 			#_vectors_and_conts_for_calc
@@ -252,8 +261,8 @@ def Get_Color(scene, obj, hit_v, V, depth, bias = 0.0001):
 			light_ints_at = light.ints / (PI_4 *Light_dist**2)
 				
 			#_shader_obj
-			shader = Shader(obj, hit_v, scene.objects,light.color, light_ints_at, bias)
-
+			shader.light_color, shader.light_ints = (light.color, light_ints_at)
+			
 			#_shadows
 			if light.shadows and shader.shadows(L):
 				return surf_col + obj.material.color * .01
@@ -274,16 +283,16 @@ def Get_Color(scene, obj, hit_v, V, depth, bias = 0.0001):
 		#_Reflections
 		cond = scene.reflections and (depth < scene.depth)
 		if cond:
-			refl_col,rng = Color(0,0,0), scene.samples
-			if obj.material.adpt_smpls:
-				rng = 1
-			for _ in range(rng):
+			refl_col = Color(0,0,0)			
+			smpls_ct = max(1, scene.samples*obj.material.roughness)
+						
+			for _ in range(smpls_ct):
 				refl_O, refl_V = shader.reflect(N,L)
 				if refl_O:
-					ic_col = Get_Color(scene, refl_O, refl_V, V, depth+1)
+					ic_col = Get_Color(scene, refl_O, shader, refl_V, V, depth+1)
 					if ic_col:
 						refl_col += ic_col
-			surf_col += (refl_col/rng)	
+			surf_col += (refl_col/smpls_ct)
 		return surf_col
 	else:
 		return None
@@ -294,7 +303,7 @@ def Minutes(t):
 	return (f"\n{m}m : {s}s")
 
 
-def render(scene,x,y):
+def render(scene,Shdr,x,y):
 	
 	def  nearest_hit(objs, f_clip, ray):
 		min_hit = f_clip
@@ -317,22 +326,22 @@ def render(scene,x,y):
 				
 	if nearest_obj:
 		hit_vec = (cam_ray.loc + (cam_ray.dir*hit_dist))
-		col = Get_Color(scene, nearest_obj, hit_vec, (cam_ray.loc - hit_vec), 0)
-		if col != scene.bkg:
-			return (col.to_rgb_q(8, scene.exposure, scene.gamma))
-		else:
-			return None
-
+		col = Get_Color(scene, nearest_obj, Shdr, hit_vec, (cam_ray.loc - hit_vec), 0)
+		return (col.to_rgb_q(8, scene.exposure, scene.gamma))
+	else:
+		return None
 
 
 def render_loop(scene, Img):
+	shader = Shader()
+	shader.objects = scene.objects
 	
 	for y in range(scene.H):
-		print(f"{y}|{scene.H}", end=" \r")
+		print(f"{y}|{scene.H}")
 			
 		for x in range(scene.W):
-			
-			col = render(scene,x,y)
+			print(f"{x}\r", end="")
+			col = render(scene,shader, x,y)
 			if col:
 				Img.putpixel((x,y), col)
 				
