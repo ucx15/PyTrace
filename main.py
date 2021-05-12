@@ -1,15 +1,10 @@
-from PIL import Image
 from time import time
-
 from Scene_files.All_features_Scene import *
-
 
 if __name__ == "__main__":
 
-	img = Image.new("RGB", (W,H))
-
 	t1 = time()
-	img = render_loop(scene, img)
+	img = Render(scene)
 	t2 = time()
 	
 	TotalTime_s = t2-t1
