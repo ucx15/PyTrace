@@ -1,4 +1,4 @@
-from rt_libM import *
+from rt_lib import *
 
 W, H =  300, 150
 
