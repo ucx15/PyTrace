@@ -370,8 +370,7 @@ def Render(scene, thds=8):
 	
 	RngLst,blockH = DivideRanges(scene.H, thds) #divisions of height
 	TaskLst = [] #all_processes
-	
-	print(RngLst)
+
 	for idx, RO in enumerate(RngLst):
 		p = Process(target=RangeRender, args=(RO, idx, scene, shader))
 		TaskLst.append(p)
