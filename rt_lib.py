@@ -1,8 +1,8 @@
 from math import tan, cosh
 from random import uniform
 from PIL import Image
-from multiprocessing import Process, Manager
-from os import remove as OsRm
+from multiprocessing import Process, cpu_count, Manager
+
 
 ##__CONSTANT__##
 PI_4 = 12.566370614359172
@@ -285,7 +285,7 @@ def Ray_Trace(scene, obj, shader, hit_v, V, depth):
 		cond = scene.reflections and (depth < scene.depth)
 		if cond:
 			refl_col = Color(0,0,0)			
-			smpls_ct = max(1, scene.samples*obj.material.roughness)
+			smpls_ct = max(1, round(scene.samples*obj.material.roughness))
 						
 			for _ in range(smpls_ct):
 				refl_O, refl_V = shader.reflect(N,L)
@@ -346,7 +346,7 @@ def ColorAt(scene,Shdr,x,y):
 
 
 
-def Render(scene, thds=8):
+def Render(scene, thds=cpu_count()):
 	
 	
 	#MultiProcessingStuff_for_rendering_parts_of_image
