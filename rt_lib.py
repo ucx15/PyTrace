@@ -1,8 +1,8 @@
 from math import tan, cosh
 from random import uniform
 from PIL import Image
-from multiprocessing import Process, cpu_count
-import os
+from multiprocessing import Process, Manager
+from os import remove as OsRm
 
 ##__CONSTANT__##
 PI_4 = 12.566370614359172
@@ -355,12 +355,13 @@ def Render(scene, thds=8):
 		H = 1 + (y_lim[-1] - y_lim[0])
 		i_temp = Image.new("RGB", (scene.W, H))
 		for y in y_lim:
-			
+			Prog = (100*(y)/(y_lim[-1]))
+			print(t_id,Prog,end="\r")
 			for x in range(scene.W):
 				col = ColorAt(scene, shader, x,y)
 				if col:
-					i_temp.putpixel((x, (y-y_lim[0])), (col))					
-		i_temp.save(f".Temp/temp{t_id}.png")
+					i_temp.putpixel((x, (y-y_lim[0])), (col))
+		ImgDict[t_id] = i_temp
 
 
 	#RenderBody
@@ -370,20 +371,22 @@ def Render(scene, thds=8):
 	
 	RngLst,blockH = DivideRanges(scene.H, thds) #divisions of height
 	TaskLst = [] #all_processes
-
+	
+	Link = Manager()
+	ImgDict = Link.dict()
+	
 	for idx, RO in enumerate(RngLst):
 		p = Process(target=RangeRender, args=(RO, idx, scene, shader))
 		TaskLst.append(p)
-	
+
 	for task in TaskLst:
 		task.start()
+
 	for task in TaskLst:
 		task.join()
 	
-	for i in range(len(TaskLst)):
-		file_path = f".Temp/temp{i}.png"
-		im = Image.open(file_path)
-		Img.paste(im,(0, i*blockH))
-		os.remove(file_path)
+	for key in range(thds):
+		tImg = ImgDict[key]
+		Img.paste(tImg, (0,key*blockH))	
 	
 	return Img
