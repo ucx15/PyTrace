@@ -1,8 +1,8 @@
 from math import tan, cosh
 from random import uniform
 from PIL import Image
-from multiprocessing import Process, cpu_count, Manager
-
+from multiprocessing import Process, Manager
+from os import cpu_count, remove as OsRm
 
 ##__CONSTANT__##
 PI_4 = 12.566370614359172
@@ -265,22 +265,27 @@ def Ray_Trace(scene, obj, shader, hit_v, V, depth):
 			shader.light_color, shader.light_ints = (light.color, light_ints_at)
 			
 			#_shadows
+			sd_flg = False
+			
 			if light.shadows and shader.shadows(L):
-				return surf_col + obj.material.color * .01
-
-			#_actually_calculating_color
-			mat_type = obj.material.type
-			if mat_type == "DIFF + GLOSS":
-				H = (L+V).normalize()
-				surf_col += (shader.diffuse(N,L) + shader.spec(N,H))
-			
-			elif mat_type == "GLOSS":
-				H = (L+V).normalize()
-				surf_col += shader.spec(N,H)
-			
-			else:
-				surf_col += shader.diffuse(N,L)
+				surf_col += obj.material.color * .01
+				sd_flg = True
+				
+			if sd_flg == False:
+				#_actually_calculating_color
+				mat_type = obj.material.type
+				if mat_type == "DIFFUSE":
+					surf_col += shader.diffuse(N,L)
+				
+				elif mat_type == "GLOSS":
+					H = (L+V).normalize()
+					surf_col += shader.spec(N,H)
+				
+				else:
+					H = (L+V).normalize()
+					surf_col += (shader.diffuse(N,L) + shader.spec(N,H))
 		
+			
 		#_Reflections
 		cond = scene.reflections and (depth < scene.depth)
 		if cond:
@@ -345,48 +350,47 @@ def ColorAt(scene,Shdr,x,y):
 		return None
 
 
-
-def Render(scene, thds=cpu_count()):
-	
+def Render(scene, thds=8):
 	
 	#MultiProcessingStuff_for_rendering_parts_of_image
 	def RangeRender(y_lim, t_id, scene, shader):
-		
+			
 		H = 1 + (y_lim[-1] - y_lim[0])
 		i_temp = Image.new("RGB", (scene.W, H))
 		for y in y_lim:
-			Prog = (100*(y)/(y_lim[-1]))
-			print(t_id,Prog,end="\r")
+			Prog = round((100*(y)/(y_lim[-1])),2)
+			print(f"{t_id}\t{Prog}", end="\r")
 			for x in range(scene.W):
 				col = ColorAt(scene, shader, x,y)
 				if col:
 					i_temp.putpixel((x, (y-y_lim[0])), (col))
 		ImgDict[t_id] = i_temp
-
-
+	
+	
 	#RenderBody
+	print(f"Number of Processes: {thds}")
 	Img = Image.new("RGB", (scene.W, scene.H))	
 	shader = Shader()
 	shader.objects = scene.objects
-	
+		
 	RngLst,blockH = DivideRanges(scene.H, thds) #divisions of height
 	TaskLst = [] #all_processes
-	
+		
 	Link = Manager()
 	ImgDict = Link.dict()
-	
+		
 	for idx, RO in enumerate(RngLst):
 		p = Process(target=RangeRender, args=(RO, idx, scene, shader))
 		TaskLst.append(p)
-
+	
 	for task in TaskLst:
 		task.start()
-
+	
 	for task in TaskLst:
 		task.join()
-	
+		
 	for key in range(thds):
 		tImg = ImgDict[key]
 		Img.paste(tImg, (0,key*blockH))	
-	
+		
 	return Img
