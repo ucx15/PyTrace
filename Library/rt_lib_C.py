@@ -3,7 +3,7 @@ from multiprocessing import Process, Manager
 
 import pyximport; pyximport.install()
 
-from All_Classes import *
+from Library.All_Classes import *
 
 
 ##__CONSTANT__##
@@ -129,7 +129,7 @@ def Render(scene, thds=8):
 		i_temp = Image.new("RGB", (scene.W, H))
 		for y in y_lim:
 			Prog = round(100*(y)/(y_lim[-1]),2)
-			print(t_id,Prog,end="\r")
+			print(f"{t_id}\t{Prog}", end="\r")
 			for x in range(scene.W):
 				col = ColorAt(scene, shader, x,y)
 				if col:
@@ -138,6 +138,7 @@ def Render(scene, thds=8):
 
 
 	#RenderBody
+	print(f"Number of Processes: {thds}")
 	Img = Image.new("RGB", (scene.W, scene.H))	
 	shader = Shader()
 	shader.objects = scene.objects
