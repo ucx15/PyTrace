@@ -1,6 +1,6 @@
 from Library.rt_lib_noC import *
 
-W, H =  2000, 1200
+W, H =  1280, 640
 
 #__OBJECTS
 
