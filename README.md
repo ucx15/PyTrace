@@ -4,6 +4,10 @@ This is a simple implementation of a Ray Tracer in Python 3.
 
 ## Dependencies
 * PILLOW
+* Cython
+
+Cython is optional.. 
+To use Cython, import ___rt_lib_C.py___ instead of ___rt_lib_noC.py___ in your Scene_File
 
 ## Updates
 * Now rt_lib.py is separated to ___All_Classes.pyx___ and ___rt_lib.py___ in _Library_ folder and will be compiled to Cython (May 14,2021 Update)
