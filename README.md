@@ -6,7 +6,7 @@ This is a simple implementation of a Ray Tracer in Python 3.
 * PILLOW
 * Cython
 
-Cython is optional.. 
+Cython is optional and is implemented only for speed, This will run absolutely fine without Cython.. 
 To use Cython, import ___rt_lib_C.py___ instead of ___rt_lib_noC.py___ in your Scene_File
 
 ## Updates
