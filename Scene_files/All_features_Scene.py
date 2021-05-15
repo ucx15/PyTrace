@@ -1,4 +1,4 @@
-from Library.rt_lib_noC import *
+from RTLib import *
 
 W, H =  1280, 640
 
