@@ -1,8 +1,7 @@
-from math import tan, cosh, radians, pi
+from math import tan, cosh, radians, pi, log
 from random import uniform
 from PIL import Image
-from multiprocessing import Process, Manager
-from os import cpu_count, remove as OsRm
+from multiprocessing import Process, cpu_count, Manager
 
 
 
@@ -83,26 +82,54 @@ class Color:
 		return Color(min(b, max(a, self.r)), min(b, max(a, self.g)), min(b, max(a, self.b)) )
 		
 	def mix_mul(self, c):
-		return Color((self.r * c.r), (self.g*c.g), (self.b*c.b))	
-	
-	def to_rgb_q(self,bpc,exp=1, gamma=1/2.2):
-		qv = 2**bpc -1
-		col =( ((self*exp).clip())**gamma )*qv
-		return min(qv,int(col.r)), min(qv,int(col.g)), min(qv, int(col.b))
-	
+		return Color((self.r * c.r), (self.g*c.g), (self.b*c.b))
+
 	def to_hex_q(self, chnl):
 		bpc = 4*chnl
-		rq, gq, bq = self.to_rgb_q(bpc)
+		rq, gq, bq = self.quantize(bpc)
 		rh = max(hex(rq)[2:], "0"*chnl)
 		gh = max(hex(gq)[2:], "0"*chnl)
 		bh = max(hex(bq)[2:], "0"*chnl)
 		return f"#{rh}{gh}{bh}"
+	
+	
+	def quantize(self,bpc=8):
+		
+		qv = 2**bpc -1
+		return ( min(int(self.r*qv),qv),
+				min(int(self.g*qv),qv),
+				min(int(self.b*qv),qv) )
+		
+	
+	def HLG_Curve(self, exp=1):
+	
+		def logc(E):
+			a,b,c = 0.17883277, 0.28466892, 0.55991073
+			
+			if E <= 1:
+				Ed = .5*(E)**.5	
+			else:
+				Ed = a*log(E-b) + c
+			return Ed
+		
+		self = self*exp
+		self.r = logc(self.r)
+		self.g = logc(self.g)
+		self.b = logc(self.b)
+	
+		return self
+
+	
+	def Gamma_Curve(self, exp=1, gamma=.45):
+		return (self*exp)**gamma
+
 
 
 class Material:
-	def __init__(self, col=Color(1,1,1), shade = True, reflect = True, rough=1, shadows=True, type = None):
+	def __init__(self, col=Color(1,1,1), shade = True, flat=False, reflect = True, rough=1, shadows=True, type = None):
 		self.color = col
 		self.shade = shade
+		self.flat = flat
 		self.roughness = rough
 		self.reflect = reflect
 		self.shadows = shadows
@@ -125,6 +152,11 @@ class Scene:
 		self.depth = 1
 		self.samples = 1
 		
+		self.bpc = 8
+		self.exposure = 1
+		self.gamma = 1/2.2
+		self.clip = False
+		
 		self.bkg = Color(0,0,0)
 		self.f_name = "render"
 	
@@ -139,23 +171,23 @@ class Camera:
 		self.up = self.forw.cross(self.right).normalize()
 		
 		self.fov = radians(fov)
-		self.near_clip = 1e-3
-		self.far_clip = 1e5
+		self.near_clip = 1e-10
+		self.far_clip = 1e10
 
 		self.img_PlaneH = tan(self.fov)
 		self.img_PlaneW = self.img_PlaneH * W/H		
 	
-	def cast(self,scene,x,y):					
+	def CamRay(self,scene,x,y):					
 		ray_dir = self.forw  +  (self.right*(x*self.img_PlaneW))  +  (self.up*(y*self.img_PlaneH))		
 		return Ray(self.loc, ray_dir.normalize())
 
 
 class Light:	
-	def __init__(self, loc,ints, col=Color(1,1,1) ):
+	def __init__(self, loc,ints, col=Color(1,1,1),shadows=False):
 		self.loc = loc
 		self.ints = ints
 		self.color = col
-		self.shadows = 0
+		self.shadows = shadows
 
 
 #__GEOMETRY__
@@ -179,6 +211,7 @@ class Sphere:
 	def normal(self, v):
 		return Vec((v.i - self.loc.i), (v.j - self.loc.j), (v.k - self.loc.k)).normalize()
 
+
 class Plane:
 	def __init__(self, loc, n):
 		self.loc = loc
@@ -187,25 +220,20 @@ class Plane:
 		self.name = "Plane"
 
 	def intersect(self, ray):
-		ang = self.n.dot(ray.dir)
+		ang = self.n.dot(ray.dir.normalize())
 		if ang:
-			inPln = (self.loc - ray.loc).dot(self.n)
-			if inPln:
-				return (inPln / ang)
-			else:
-				return None
-		else:
-			return None
+			inPln = ((self.loc - ray.loc).dot(self.n)) / (ang)
+			return inPln if inPln >= 0 else None
+
 
 	def normal(self, v):
 		return self.n
 
 
+
 			
 #__Shader__			
 class Shader:
-	
-	bias = 0.001
 	
 	def init(self):
 		self.obj = None
@@ -213,39 +241,38 @@ class Shader:
 		self.objects = None
 		self.light_color = None
 		self.light_ints = None
-
 	
 	def diffuse(self, N,L):
-		diff_col = self.obj.material.color * (self.light_ints * max(0, N.dot(L)) ) + (self.obj.material.color*.001)
+		diff_col = self.obj.material.color * (self.light_ints * max(0, N.dot(L)) )
 		return diff_col
 	
 	def spec(self, N,H):
 		spec_col = self.light_color * (((1-self.obj.material.roughness)*self.light_ints) * max(0, N.dot(H))**self.obj.material.spec_const() )
 		return spec_col
 	
-	def shadows(self,L):
-		sdw_ray = Ray(self.hit_loc + L*self.bias, L)		
+	def isShadow(self,L):
+		sdw_ray = Ray(self.hit_loc + L*0.0001, L)		
 		for obj in self.objects:
 			hit_pos = obj.intersect(sdw_ray)
-			if hit_pos and hit_pos > self.bias:
+			if hit_pos and hit_pos > 0.0001:
 				return 1
 		else:
 			return None
 
 		
-	def reflect(self,N,L):
+	def reflect(self,N,V):
 		Rv = Vec(uniform(-1,1), uniform(-1,1), uniform(-1,1))
 		
-		R = ( (-L) -  (N *( 2*N.dot(-L))) ).normalize()
+		R = ( (-V) -  (N *( 2*N.dot(-V))) ).normalize()
 		
 		R_Dir = ((N+Rv)*(self.obj.material.roughness)) + (R * (1-self.obj.material.roughness))
 		R_Dir.normalize()
-		R_Loc = self.hit_loc + (R_Dir*self.bias)	
+		R_Loc = self.hit_loc + (R_Dir*0.0001)	
 		ref_ray = Ray(R_Loc, R_Dir)
 		
 		for obj in self.objects:
 			hit_pos = obj.intersect(ref_ray)
-			if hit_pos and hit_pos > self.bias:
+			if hit_pos and hit_pos > 0.0001:
 				return obj, self.hit_loc + (R_Dir *hit_pos)
 		else:
 			return None, None
@@ -253,80 +280,46 @@ class Shader:
 
 
 ###______FUNCTIONS_____###
-def Ray_Trace(scene, obj, shader, hit_v, V, depth):
+
+
+def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 	
-	if obj and depth <= scene.depth:
-		if obj.material.shade:
-			shader.obj, shader.hit_loc, shader.mat = obj, hit_v, obj.material
-			N = obj.normal(hit_v)
-			V = V.normalize()
-			surf_col = Color(0,0,0)
+	if obj and (obj.material.shade) and (depth <= scene.depth):
 		
-			for light in scene.lights:
+		Total_Color = Color(0,0,0)
+		shader.obj,shader.hit_loc = obj, hit_pt
+		NormalVec = obj.normal(hit_pt).normalize()
+		
+		
+		for Light in scene.lights:
 	
-				#_vectors_and_conts_for_calc
-				L = (light.loc - hit_v)
-				Light_dist = L.mag
-				L= L.normalize()
-				light_ints_at = light.ints / (4*pi * Light_dist**2)
-					
-				#_shader_obj
-				shader.light_color, shader.light_ints = (light.color, light_ints_at)
-				
-				#_shadows
-				sd_flg = False
-				
-				if light.shadows and obj.material.shadows and shader.shadows(L):
-					surf_col += obj.material.color * .01
-					sd_flg = True
-					
-				if sd_flg == False:
-					#_actually_calculating_color
-					mat_type = obj.material.type
-					if mat_type == "DIFFUSE":
-						surf_col += shader.diffuse(N,L)
-					
-					elif mat_type == "GLOSS":
-						H = (L+V).normalize()
-						surf_col += shader.spec(N,H)
-					
-					else:
-						H = (L+V).normalize()
-						surf_col += (shader.diffuse(N,L) + shader.spec(N,H))
+			L = (Light.loc - hit_pt)
+			D = L.mag
+			L.normalize()
+			HalfVec = (L + V).normalize()
+	
+			shader.light_color = Light.color
+			shader.light_ints = (Light.ints/(4*pi*D*D))
+	
+			#_Shadow_Detection
+			if (Light.shadows and shader.isShadow(L)):
+				Total_Color += obj.material.color *.005
 			
-				
-			#_Reflections
-			cond = obj.material.reflect and scene.reflections and (depth < scene.depth)
-			if cond:
-				refl_col = Color(0,0,0)			
-				smpls_ct = max(1, round(scene.samples*obj.material.roughness))
-							
-				for _ in range(smpls_ct):
-					refl_O, refl_V = shader.reflect(N,L)
-					if refl_O:
-						ic_col = Ray_Trace(scene, refl_O, shader, refl_V, V, depth+1)
-						if ic_col:
-							refl_col += ic_col
-				surf_col += (refl_col/smpls_ct)
-			return surf_col
-		
-		else:
-			return obj.material.color
+			else:
+			#_Surface_Color
+				if obj.material.type == "GLOSS":
+					Total_Color += shader.spec(NormalVec, HalfVec)
+					
+				elif obj.material.type == "DIFFUSE":
+					Total_Color += shader.diffuse(NormalVec, L)
+				else:
+					Total_Color += (shader.spec(NormalVec, HalfVec) + shader.diffuse(NormalVec, L))
+
+		return Total_Color	
 	else:
 		return None
 
 
-def DivideRanges(Q, parts):
-	pSize = Q//parts	
-	st, end = 0, pSize
-	Div_lst = []
-	for _ in range(parts):
-		Div = range(st, end)
-		Div_lst.append(Div)
-		st, end = end, end+pSize
-	if Q-st:
-		Div_lst[parts-1] = range(st-pSize, Q)
-	return Div_lst, pSize
 
 
 def Minutes(t):
@@ -335,41 +328,60 @@ def Minutes(t):
 	return (f"\n{m}m : {s}s")
 
 
-def ColorAt(scene,Shdr,x,y):	
-	def  nearest_hit(objs, f_clip, ray):
-		min_hit = f_clip
-		n_obj = None
+def  nearest_hit(objs, f_clip, ray, dist=True):
+	min_hit = f_clip
+	n_obj = None
 	
-		for obj in objs:
-			t = obj.intersect(ray)
+	for obj in objs:
+		t = obj.intersect(ray)
 				
-			if t and t <= min_hit:
-				min_hit = t
-				n_obj = obj
-				
+		if t and t <= min_hit:
+			min_hit = t
+			n_obj = obj
+	
+	if dist:
 		return n_obj, min_hit
+	else:
+		return True if n_obj else False
 
+
+
+def ColorAt(scene,Shdr,x,y):
 	
 	x_ray, y_ray = (2*x)/scene.W -1, (2*y)/scene.H -1	
-	cam_ray = scene.camera.cast(scene, x_ray, y_ray)
+	cam_ray = scene.camera.CamRay(scene, x_ray, y_ray)
 		
 	nearest_obj, hit_dist = nearest_hit(scene.objects, scene.camera.far_clip, cam_ray)
 				
 	if nearest_obj:
-		hit_vec = (cam_ray.loc + (cam_ray.dir*hit_dist))
-		col = Ray_Trace(scene, nearest_obj, Shdr, hit_vec, (cam_ray.loc - hit_vec), 0)
-		return (col.to_rgb_q(8))
+		hit_pt = (cam_ray.loc + (cam_ray.dir*hit_dist))
+		col = Ray_Trace(scene, nearest_obj, hit_pt, (cam_ray.loc - hit_pt), Shdr)
+		if col:
+			return (col.Gamma_Curve(exp=scene.exposure).quantize(scene.bpc))
+		
 	else:
 		return None
 
 
 def Render(scene, thds=8):
+	def DivideRanges(Q, parts):
+		pSize = Q//parts	
+		st, end = 0, pSize
+		Div_lst = []
+		for _ in range(parts):
+			Div = range(st, end)
+			Div_lst.append(Div)
+			st, end = end, end+pSize
+		if Q-st:
+			Div_lst[parts-1] = range(st-pSize, Q)
+		return Div_lst, pSize
+	
 	
 	#MultiProcessingStuff_for_rendering_parts_of_image
 	def RangeRender(y_lim, t_id, scene, shader):
 			
 		H = 1 + (y_lim[-1] - y_lim[0])
-		i_temp = Image.new("RGB", (scene.W, H))
+		i_temp = Image.new("RGB", (scene.W, H) )
 		for y in y_lim:
 			Prog = round((100*(y)/(y_lim[-1])),2)
 			print(f"{t_id}\t{Prog}", end="\r")
