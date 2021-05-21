@@ -155,7 +155,7 @@ class Scene:
 		self.bpc = 8
 		self.exposure = 1
 		self.gamma = 1/2.2
-		self.clip = False
+		self.curve = "HLG"
 		
 		self.bkg = Color(0,0,0)
 		self.f_name = "render"
@@ -230,6 +230,95 @@ class Plane:
 		return self.n
 
 
+class Triangle():
+	def __init__(self, a,b,c):
+		self.a = a
+		self.b = b
+		self.c = c
+		
+		self.A = (b-a)
+		self.B = (c-b)
+		self.C = (a-c)
+		
+		self.n = ((b-a).cross(c-a)).normalize()
+		self.plane = Plane(a, self.n)
+			
+		self.material = Material()
+		self.name = "Triangle"
+	
+	def inTris(self,point):
+			
+			pA = point-self.a
+			pB = point-self.b
+			pC = point-self.c
+			inT =  (((self.A.cross(pA)).dot(self.n))>=0 and
+					((self.B.cross(pB)).dot(self.n))>=0 and
+					((self.C.cross(pC)).dot(self.n))>=0 )
+			if inT:
+				return True
+			else:
+				return False
+
+		
+	def intersect(self, ray):		
+		p_dist = self.plane.intersect(ray)
+		
+		if p_dist:
+			pt = ray.loc + ray.dir*p_dist
+			
+			if self.inTris(pt):
+				return p_dist
+			return None
+		return None
+	
+	def normal(self, v):
+		return self.n
+
+
+class Cube:
+	def __init__(self,loc,edge):
+		self.loc = loc
+		self.edge = edge
+		self.material = Material()
+		self.name = "Cube"
+		
+		a = loc
+		b = loc + Vec(edge,0,0)
+		c = loc + Vec(edge,0,edge)
+		d = loc + Vec(0,0,edge)
+		e = loc + Vec(0,edge,0)
+		f = loc + Vec(edge,edge,0)
+		g = loc + Vec(edge,edge,edge)
+		h = loc + Vec(0,edge,edge)
+
+		#_front
+		T1 = Triangle(a,b,c)
+		T2 = Triangle(a,c,d)		
+		#_left
+		T3 = Triangle(e,a,d)
+		T4 = Triangle(e,d,h)		
+		#_right
+		T5 = Triangle(b,f,g)
+		T6 = Triangle(b,g,c)		
+		#_back
+		T7 = Triangle(f,e,h)
+		T8 = Triangle(f,h,g)		
+		#_top
+		T9 = Triangle(d,c,g)
+		T10 = Triangle(d,g,h)		
+		#_bottom
+		T11 = Triangle(e,f,b)
+		T12 = Triangle(e,b,a)
+		
+		self.Tris = [T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12]
+	
+	def mat_apply(self):
+		for T in self.Tris:
+			T.material = self.material
+
+	def visibleTris(self,ray):
+		return [T for T in self.Tris if (T.n.dot(ray.dir)<=0) ]
+
 
 			
 #__Shader__			
@@ -270,13 +359,18 @@ class Shader:
 		R_Loc = self.hit_loc + (R_Dir*0.0001)	
 		ref_ray = Ray(R_Loc, R_Dir)
 		
+		min_hit = 1e90
+		min_o = None
 		for obj in self.objects:
 			hit_pos = obj.intersect(ref_ray)
-			if hit_pos and hit_pos > 0.0001:
-				return obj, self.hit_loc + (R_Dir *hit_pos)
+			if hit_pos and min_hit>= hit_pos > 0.0001:
+				min_hit = hit_pos
+				min_o = obj
+				
+		if min_o and min_hit != 1e90:			
+			return min_o, self.hit_loc + (R_Dir *min_hit)
 		else:
 			return None, None
-
 
 
 ###______FUNCTIONS_____###
@@ -305,8 +399,13 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 			if (Light.shadows and shader.isShadow(L)):
 				Total_Color += obj.material.color *.005
 			
+			#_Flat_Surface
+			elif obj.material.flat:
+				
+				Total_Color += obj.material.color
+			
+			#_Shaded_Surface
 			else:
-			#_Surface_Color
 				if obj.material.type == "GLOSS":
 					Total_Color += shader.spec(NormalVec, HalfVec)
 					
@@ -320,12 +419,17 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 					scene.reflections and
 					obj.material.reflect and
 					not (obj.material.flat))
-		if ref_cond:
-			Ref_O, Ref_V = shader.reflect(NormalVec, V)
-			if Ref_O:
-				smpl_col = Ray_Trace(scene, Ref_O, Ref_V,(Ref_V - hit_pt).normalize(), shader, depth+1)
-				Total_Color+=smpl_col if smpl_col else Color(0,0,0)
-					
+		if ref_cond:			
+			adpt_smpls = max(1, int(scene.samples * obj.material.roughness))
+			ref_col = Color(0,0,0)
+			
+			for _ in range(adpt_smpls):
+				Ref_O, Ref_V = shader.reflect(NormalVec, V)
+				if Ref_O:
+					smpl_col = Ray_Trace(scene, Ref_O, Ref_V,(Ref_V - hit_pt).normalize(), shader, depth+1)
+					ref_col+=smpl_col if smpl_col else Color(0,0,0)
+			Total_Color += (ref_col/adpt_smpls)
+				
 		return Total_Color		
 	else:
 		return None
@@ -367,9 +471,16 @@ def ColorAt(scene,Shdr,x,y):
 	if nearest_obj:
 		hit_pt = (cam_ray.loc + (cam_ray.dir*hit_dist))
 		col = Ray_Trace(scene, nearest_obj, hit_pt, (cam_ray.loc - hit_pt), Shdr)
-		if col:
-			return (col.Gamma_Curve(exp=scene.exposure).quantize(scene.bpc))
 		
+		if col:
+			if scene.curve == "HLG":
+				return (col.HLG_Curve(exp=scene.exposure).quantize(scene.bpc))
+			elif scene.curve == "GAMMA":
+				return (col.Gamma_Curve(exp=scene.exposure).quantize(scene.bpc))			
+			elif scene.curve == "LINEAR":
+				return (col.quantize(scene.bpc))
+			else:
+				return (col.quantize(scene.bpc))
 	else:
 		return None
 
@@ -406,7 +517,14 @@ def Render(scene, thds=8):
 	#RenderBody
 	print(f"Number of Processes: {thds}")
 	Img = Image.new("RGB", (scene.W, scene.H))	
-	shader = Shader()
+		
+	for O in scene.objects:
+		if O.name == "Cube":
+			O.mat_apply()
+			scene.objects.extend(O.Tris)
+			scene.objects.remove(O)
+	
+	shader = Shader()			
 	shader.objects = scene.objects
 		
 	RngLst,blockH = DivideRanges(scene.H, thds) #divisions of height
