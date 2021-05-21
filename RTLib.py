@@ -295,8 +295,8 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 	
 			L = (Light.loc - hit_pt)
 			D = L.mag
-			L.normalize()
 			HalfVec = (L + V).normalize()
+			L=L.normalize()
 	
 			shader.light_color = Light.color
 			shader.light_ints = (Light.ints/(4*pi*D*D))
@@ -315,7 +315,18 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 				else:
 					Total_Color += (shader.spec(NormalVec, HalfVec) + shader.diffuse(NormalVec, L))
 
-		return Total_Color	
+		
+		ref_cond = (depth < scene.depth and
+					scene.reflections and
+					obj.material.reflect and
+					not (obj.material.flat))
+		if ref_cond:
+			Ref_O, Ref_V = shader.reflect(NormalVec, V)
+			if Ref_O:
+				smpl_col = Ray_Trace(scene, Ref_O, Ref_V,(Ref_V - hit_pt).normalize(), shader, depth+1)
+				Total_Color+=smpl_col if smpl_col else Color(0,0,0)
+					
+		return Total_Color		
 	else:
 		return None
 
