@@ -43,4 +43,4 @@ _THIS IS NOT A SERIOUS PROJECT THAT WILL OVERTAKE ARNOLD OR CYCLES!_
 I've got plans for that too ;) 
 
 ___Thanks for reading!___
-You can also contribute and improve by pulling a request
+You can also contribute and improve
