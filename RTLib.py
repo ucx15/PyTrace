@@ -156,6 +156,7 @@ class Scene:
 		self.exposure = 1
 		self.gamma = 1/2.2
 		self.curve = "HLG"
+		self.crop = False
 		
 		self.bkg = Color(0,0,0)
 		self.f_name = "render"
@@ -276,20 +277,21 @@ class Triangle():
 
 
 class Cube:
-	def __init__(self,loc,edge):
+	def __init__(self,loc,r):
 		self.loc = loc
-		self.edge = edge
+		self.r = r
 		self.material = Material()
 		self.name = "Cube"
 		
-		a = loc
-		b = loc + Vec(edge,0,0)
-		c = loc + Vec(edge,0,edge)
-		d = loc + Vec(0,0,edge)
-		e = loc + Vec(0,edge,0)
-		f = loc + Vec(edge,edge,0)
-		g = loc + Vec(edge,edge,edge)
-		h = loc + Vec(0,edge,edge)
+		a = loc + Vec(-r,-r,-r)
+		b = loc + Vec(+r,-r,-r)
+		c = loc + Vec(+r,-r,+r)
+		d = loc + Vec(-r,-r,+r)
+		e = loc + Vec(-r,+r,-r)
+		f = loc + Vec(+r,+r,-r)
+		g = loc + Vec(+r,+r,+r)
+		h = loc + Vec(-r,+r,+r)
+
 
 		#_front
 		T1 = Triangle(a,b,c)
@@ -486,65 +488,84 @@ def ColorAt(scene,Shdr,x,y):
 
 
 def Render(scene, thds=8):
-	def DivideRanges(Q, parts):
-		pSize = Q//parts	
-		st, end = 0, pSize
+	def DivideRanges(rS, rE, parts):
+		pSize = (rE-rS)//parts
 		Div_lst = []
-		for _ in range(parts):
-			Div = range(st, end)
-			Div_lst.append(Div)
-			st, end = end, end+pSize
-		if Q-st:
-			Div_lst[parts-1] = range(st-pSize, Q)
-		return Div_lst, pSize
+		for s in range(rS,rE,pSize):		
+			e = s+pSize	
+			if (e>rE): e=rE
 	
+			Div_lst.append(range(s,e))
+		return Div_lst, pSize
+		
 	
 	#MultiProcessingStuff_for_rendering_parts_of_image
-	def RangeRender(y_lim, t_id, scene, shader):
+	def RangeRender(y_lim,x_lim, t_id, scene, shader):
 			
 		H = 1 + (y_lim[-1] - y_lim[0])
-		i_temp = Image.new("RGB", (scene.W, H) )
+		W = 1 + (x_lim[-1] - x_lim[0])
+		i_temp = Image.new("RGB", (W, H) )
+		
 		for y in y_lim:
 			Prog = round((100*(y)/(y_lim[-1])),2)
 			print(f"{t_id}\t{Prog}", end="\r")
-			for x in range(scene.W):
+			
+			for x in x_lim:
 				col = ColorAt(scene, shader, x,y)
 				if col:
-					i_temp.putpixel((x, (y-y_lim[0])), (col))
+					xi,yi = (x-x_lim[0]), (y-y_lim[0])
+					i_temp.putpixel((xi,yi), (col))
 		ImgDict[t_id] = i_temp
 	
 	
 	#RenderBody
 	print(f"Number of Processes: {thds}")
-	Img = Image.new("RGB", (scene.W, scene.H))	
-		
+	
+	#_resolving_objects_to_primitives	
 	for O in scene.objects:
 		if O.name == "Cube":
 			O.mat_apply()
 			scene.objects.extend(O.Tris)
 			scene.objects.remove(O)
 	
+	#_Dividing_height_to_smallerChunks
+	if scene.crop:
+		CrpW, CrpH = scene.crop["x"], scene.crop["y"]
+		ImgW,ImgH = (CrpW[1]-CrpW[0]), (CrpH[1]-CrpH[0])
+		Render_W = range(CrpW[0], CrpW[1])
+		RngLst, blockH = DivideRanges(CrpH[0],CrpH[1], thds)
+	else:
+		ImgW,ImgH = scene.W, scene.H
+		Render_W = range(scene.W)	
+		RngLst,blockH = DivideRanges(0, scene.H, thds) #divisions of height
+	
+	#_Assign_Shader	
 	shader = Shader()			
 	shader.objects = scene.objects
+	
+	#_Assign_Main_Returnable_Image
 		
-	RngLst,blockH = DivideRanges(scene.H, thds) #divisions of height
-	TaskLst = [] #all_processes
+	Img = Image.new("RGB", (ImgW, ImgH))	
+	
+	#_Assign_Chunks_to_different_processes
+	TaskLst = []
 		
 	Link = Manager()
 	ImgDict = Link.dict()
 		
-	for idx, RO in enumerate(RngLst):
-		p = Process(target=RangeRender, args=(RO, idx, scene, shader))
+	for idx, Render_H in enumerate(RngLst):
+		p = Process(target=RangeRender, args=(Render_H,Render_W, idx, scene, shader))
 		TaskLst.append(p)
-	
+
 	for task in TaskLst:
 		task.start()
 	
 	for task in TaskLst:
 		task.join()
-		
-	for key in range(thds):
+	
+	#_Merging_Chunks_to_single_Image	
+	for key in range(len(RngLst)):
 		tImg = ImgDict[key]
 		Img.paste(tImg, (0,key*blockH))	
-		
+
 	return Img
