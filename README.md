@@ -5,8 +5,21 @@ This is a simple implementation of a Ray Tracer in Python 3.
 ## Dependencies
 * PILLOW
 
-## Updates
-* Included support for Multi-core Rendering (May 13,2021 Update)
+## ChangeLog
+
+### May 31,2021
+* Included Support for Area Lights
+* Support for Soft Shadows
+* Added Quad as a Composite Object
+
+### May 22,2021 
+* Added Triangle as a Primitive Object
+* Added Cube as a Composite Object
+* Included Support for High Dynamic Range Rendering using Hybrid-Log Gamma Curve
+* Included Support for Region Rendering
+
+### May13,2021
+* Included support for Multi-core Rendering
 
 
 ## Instructions
@@ -18,23 +31,22 @@ If you want to complie this,just download/clone this repo and run ___main.py___,
 * Specular Highlights(Blinn-Phong)
 * Specular and Diffused Reflections
 * Recursive Reflections with unlimited depth (to recursion limit)
-* Sharp Shadows
-* Stochastic Sampling for Reflections
+* Soft Shadows
+* Stochastic Sampling for Reflections and Shadows
 
 ### Architecture
 * Multiple Lights
 * Multiple Objects
 * Spheres
 * Planes
-* Perspective Camera
-* Multi-core Rendering (May 13,2021 Update)
+* Triangles
+* Perspective and Orthographic Camera
+* Multi-core Rendering
 
 ## Current Limitations
-* Sampling available only for reflections, not for shadows and anti-aliasing
-* Only point lights supported
-* No soft shadows
-* No area Lights
+* Sampling not available for anti-aliasing (SuperSampling)
 * No GUI
+
 
 Some Limitations will be removed in coming days..
 I did this as a fun project to increase my knowledge in Python(especially OOP)
