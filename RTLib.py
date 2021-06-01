@@ -93,16 +93,13 @@ class Color:
 		return f"#{rh}{gh}{bh}"
 	
 	
-	def quantize(self,bpc=8):
-		
+	def quantize(self,bpc=8):		
 		qv = 2**bpc -1
 		return ( min(int(self.r*qv),qv),
 				min(int(self.g*qv),qv),
-				min(int(self.b*qv),qv) )
-		
+				min(int(self.b*qv),qv) )		
 	
-	def HLG_Curve(self, exp=1):
-	
+	def HLG_Curve(self, exp=1):	
 		def logc(E):
 			a,b,c = 0.17883277, 0.28466892, 0.55991073
 			
@@ -151,7 +148,7 @@ class Scene:
 		self.reflections = False
 		self.depth = 1
 		self.samples = 1
-		
+
 		self.bpc = 8
 		self.exposure = 1
 		self.gamma = 1/2.2
@@ -177,26 +174,80 @@ class Camera:
 
 		self.img_PlaneH = tan(self.fov)
 		self.img_PlaneW = self.img_PlaneH * W/H		
-	
-	def CamRay(self,scene,x,y):					
-		ray_dir = self.forw  +  (self.right*(x*self.img_PlaneW))  +  (self.up*(y*self.img_PlaneH))		
-		return Ray(self.loc, ray_dir.normalize())
-
+		
+		self.type = "PERS"
+		#self.scatter = 0
+		#self.CellSizeHf = self.img_PlaneW/(W*2)
+				
+	def CamRay(self,x,y):
+		RD = (x*self.img_PlaneW)
+		UD = (y*self.img_PlaneH)
+		
+		ray_dir = self.forw + (self.right*RD) + (self.up*UD)
+		
+		if self.type == "PERS":
+			return Ray(self.loc, ray_dir.normalize())
+		elif self.type == "ORTHO":
+			return Ray(ray_dir,self.forw)
+			
 
 class Light:	
-	def __init__(self, loc,ints, col=Color(1,1,1),shadows=False):
+	def __init__(self, loc,ints, color=Color(1,1,1),shadows=False,type="POINT",At=None,Up=Vec(0,0,1),edge=1,sdwsmpls=25,length=None,width=None):
 		self.loc = loc
 		self.ints = ints
-		self.color = col
+		self.color = color
 		self.shadows = shadows
+		self.type = type
+		
+		self.At = At
+		self.Up = Up
+		self.edge = edge
+		self.sdwsmpls = sdwsmpls
+		self.l = length
+		self.w = width
+
+	def Generate(self):
+		pW,pH = self.l, self.w
+		
+		if pW and pH:
+			AR = pW/pH
+			W = int((self.sdwsmpls*AR)**.5)
+			H = int((self.sdwsmpls/AR)**.5)
+		else:
+			W = H = int(self.sdwsmpls**.5)
+			pW = pH = self.edge
+
+		Lights = []
+		Sints = self.ints/self.sdwsmpls
+		
+		F = (self.At - self.loc).normalize()
+		R = (F.cross(self.Up)).normalize()
+		U = (F.cross(R)).normalize()
+
+		
+		for yv in range(H):
+			y =  (2*yv/H)-1
+			for xv in range(W):
+				x = (2*xv/W)-1
+
+				RD = (x*pW)
+				UD = (y*pH)
+		
+				Pos = self.loc + (F + (R*RD) + (U*UD))
+				sL = Light(Pos,Sints,color=self.color,shadows=self.shadows)
+				Lights.append(sL)
+		return Lights
 
 
 #__GEOMETRY__
+
+#_primitives___
 class Sphere:
 	def __init__(self, loc, r):
 		self.loc = loc
 		self.r = r
 		self.material = Material()
+		self.type = "PRIMITIVE"
 		self.name = "Sphere"
 		
 	def intersect(self, ray):
@@ -218,6 +269,7 @@ class Plane:
 		self.loc = loc
 		self.n = n.normalize()
 		self.material = Material()
+		self.type="PRIMITIVE"
 		self.name = "Plane"
 
 	def intersect(self, ray):
@@ -237,43 +289,61 @@ class Triangle():
 		self.b = b
 		self.c = c
 		
-		self.A = (b-a)
-		self.B = (c-b)
-		self.C = (a-c)
-		
-		self.n = ((b-a).cross(c-a)).normalize()
-		self.plane = Plane(a, self.n)
-			
 		self.material = Material()
+		self.type = "PRIMITIVE"
 		self.name = "Triangle"
+		
+		self.AB = (b-a)
+		self.B = (c-b)
+		self.AC = (c-a)
+		
+		self.n = ((self.AB).cross(self.AC)).normalize()
 	
-	def inTris(self,point):
-			
-			pA = point-self.a
-			pB = point-self.b
-			pC = point-self.c
-			inT =  (((self.A.cross(pA)).dot(self.n))>=0 and
-					((self.B.cross(pB)).dot(self.n))>=0 and
-					((self.C.cross(pC)).dot(self.n))>=0 )
-			if inT:
-				return True
-			else:
-				return False
 
-		
-	def intersect(self, ray):		
-		p_dist = self.plane.intersect(ray)
-		
-		if p_dist:
-			pt = ray.loc + ray.dir*p_dist
-			
-			if self.inTris(pt):
-				return p_dist
-			return None
-		return None
+	def intersect(self, ray):
+	    
+	    pvec = ray.dir.cross(self.AC)	
+	    det = self.AB.dot(pvec)
 	
+	    if det < 0.000001:
+	        return None
+	
+	    invDet = 1.0 / det
+	    tvec = ray.loc - self.a
+	    u = tvec.dot(pvec) * invDet
+	
+	    if u < 0 or u > 1:
+	        return None
+	
+	    qvec = tvec.cross(self.AB)
+	    v = ray.dir.dot(qvec) * invDet
+	
+	    if v < 0 or ((u + v) > 1):
+	        return None
+	
+	    return self.AC.dot(qvec) * invDet
+	
+
 	def normal(self, v):
 		return self.n
+
+
+
+#_composite____       (non_direct_intersection_function)
+	
+class Quad:
+	def __init__(self, a,b,c,d):
+		self.T1 = Triangle(a,b,d)
+		self.T2 = Triangle(d,b,c)
+		
+		self.Tris = [self.T1,self.T2]
+		self.material = Material()
+		self.type = "COMPOSE"
+		self.name = "Quad"
+
+	def mat_apply(self):
+		self.T1.material = self.material
+		self.T2.material = self.material
 
 
 class Cube:
@@ -281,6 +351,7 @@ class Cube:
 		self.loc = loc
 		self.r = r
 		self.material = Material()
+		self.type = "COMPOSE"
 		self.name = "Cube"
 		
 		a = loc + Vec(-r,-r,-r)
@@ -322,8 +393,8 @@ class Cube:
 		return [T for T in self.Tris if (T.n.dot(ray.dir)<=0) ]
 
 
-			
-#__Shader__			
+		
+#__Shader__
 class Shader:
 	
 	def init(self):
@@ -341,11 +412,11 @@ class Shader:
 		spec_col = self.light_color * (((1-self.obj.material.roughness)*self.light_ints) * max(0, N.dot(H))**self.obj.material.spec_const() )
 		return spec_col
 	
-	def isShadow(self,L):
+	def isShadow(self,L,Ld):
 		sdw_ray = Ray(self.hit_loc + L*0.0001, L)		
 		for obj in self.objects:
 			hit_pos = obj.intersect(sdw_ray)
-			if hit_pos and hit_pos > 0.0001:
+			if hit_pos and Ld > hit_pos and hit_pos > 0.0001:
 				return 1
 		else:
 			return None
@@ -398,8 +469,8 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 			shader.light_ints = (Light.ints/(4*pi*D*D))
 	
 			#_Shadow_Detection
-			if (Light.shadows and shader.isShadow(L)):
-				Total_Color += obj.material.color *.005
+			if (Light.shadows and shader.isShadow(L,D)):
+				Total_Color += obj.material.color *.05
 			
 			#_Flat_Surface
 			elif obj.material.flat:
@@ -409,10 +480,13 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 			#_Shaded_Surface
 			else:
 				if obj.material.type == "GLOSS":
-					Total_Color += shader.spec(NormalVec, HalfVec)
+					Total_Color += obj.material.color + shader.spec(NormalVec, HalfVec)
 					
 				elif obj.material.type == "DIFFUSE":
 					Total_Color += shader.diffuse(NormalVec, L)
+				
+				elif obj.material.type == "EMMIT":
+					Total_Color += obj.material.color
 				else:
 					Total_Color += (shader.spec(NormalVec, HalfVec) + shader.diffuse(NormalVec, L))
 
@@ -420,9 +494,13 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 		ref_cond = (depth < scene.depth and
 					scene.reflections and
 					obj.material.reflect and
-					not (obj.material.flat))
-		if ref_cond:			
-			adpt_smpls = max(1, int(scene.samples * obj.material.roughness))
+					not (obj.material.flat) and
+					obj.material.type!="EMMIT")
+		if ref_cond:
+			if scene.samples == 1:
+				adpt_smpls = 1
+			else:			
+				adpt_smpls = max(1, int(scene.samples * obj.material.roughness))
 			ref_col = Color(0,0,0)
 			
 			for _ in range(adpt_smpls):
@@ -463,28 +541,27 @@ def  nearest_hit(objs, f_clip, ray, dist=True):
 
 
 
-def ColorAt(scene,Shdr,x,y):
-	
-	x_ray, y_ray = (2*x)/scene.W -1, (2*y)/scene.H -1	
-	cam_ray = scene.camera.CamRay(scene, x_ray, y_ray)
-		
+def ColorAt(scene,Shdr,x,y):		
+	x_ray, y_ray = (2*x)/scene.W -1, (2*y)/scene.H -1
+	cam_ray = scene.camera.CamRay(x_ray, y_ray)
+
 	nearest_obj, hit_dist = nearest_hit(scene.objects, scene.camera.far_clip, cam_ray)
-				
+					
 	if nearest_obj:
-		hit_pt = (cam_ray.loc + (cam_ray.dir*hit_dist))
-		col = Ray_Trace(scene, nearest_obj, hit_pt, (cam_ray.loc - hit_pt), Shdr)
+		hit_pt = (cam_ray.loc + (cam_ray.dir*hit_dist))		
+		PixelColor = Ray_Trace(scene, nearest_obj, hit_pt, (cam_ray.loc - hit_pt), Shdr)
 		
-		if col:
+		if PixelColor:	
 			if scene.curve == "HLG":
-				return (col.HLG_Curve(exp=scene.exposure).quantize(scene.bpc))
+				return (PixelColor.HLG_Curve(exp=scene.exposure).quantize(scene.bpc))
 			elif scene.curve == "GAMMA":
-				return (col.Gamma_Curve(exp=scene.exposure).quantize(scene.bpc))			
+				return (PixelColor.Gamma_Curve(exp=scene.exposure).quantize(scene.bpc))			
 			elif scene.curve == "LINEAR":
-				return (col.quantize(scene.bpc))
+				return (PixelColor.quantize(scene.bpc))
 			else:
-				return (col.quantize(scene.bpc))
-	else:
-		return None
+				return (PixelColor.quantize(scene.bpc))
+		else:
+			return None
 
 
 def Render(scene, thds=8):
@@ -521,13 +598,31 @@ def Render(scene, thds=8):
 	#RenderBody
 	print(f"Number of Processes: {thds}")
 	
-	#_resolving_objects_to_primitives	
-	for O in scene.objects:
-		if O.name == "Cube":
-			O.mat_apply()
-			scene.objects.extend(O.Tris)
-			scene.objects.remove(O)
+	#_resolving_AreaLights_to_pointLights
+	LightLst = []
+	for L in scene.lights:
+		if L.type == "AREA":
+			LightLst.extend(L.Generate())
+		else:
+			LightLst.append(L)
 	
+	scene.lights = LightLst
+
+
+	#_resolving_objects_to_primitives
+	Object_List = []
+	for O in scene.objects:
+		if O.type == "COMPOSE":
+			O.mat_apply()
+			Object_List.extend(O.Tris)
+		elif O.type == "PRIMITIVE":
+			Object_List.append(O)
+
+	#_Assign_Shader	
+	shader = Shader()			
+	scene.objects = shader.objects = Object_List
+
+
 	#_Dividing_height_to_smallerChunks
 	if scene.crop:
 		CrpW, CrpH = scene.crop["x"], scene.crop["y"]
@@ -539,12 +634,8 @@ def Render(scene, thds=8):
 		Render_W = range(scene.W)	
 		RngLst,blockH = DivideRanges(0, scene.H, thds) #divisions of height
 	
-	#_Assign_Shader	
-	shader = Shader()			
-	shader.objects = scene.objects
-	
-	#_Assign_Main_Returnable_Image
-		
+
+	#_Assign_Main_Returnable_Image		
 	Img = Image.new("RGB", (ImgW, ImgH))	
 	
 	#_Assign_Chunks_to_different_processes
@@ -556,7 +647,7 @@ def Render(scene, thds=8):
 	for idx, Render_H in enumerate(RngLst):
 		p = Process(target=RangeRender, args=(Render_H,Render_W, idx, scene, shader))
 		TaskLst.append(p)
-
+	
 	for task in TaskLst:
 		task.start()
 	
@@ -566,6 +657,5 @@ def Render(scene, thds=8):
 	#_Merging_Chunks_to_single_Image	
 	for key in range(len(RngLst)):
 		tImg = ImgDict[key]
-		Img.paste(tImg, (0,key*blockH))	
-
+		Img.paste(tImg, (0,key*blockH))
 	return Img
