@@ -5,6 +5,9 @@ This is a simple implementation of a Ray Tracer in Python 3.
 ## Dependencies
 * PILLOW
 
+## Instructions
+If you want to complie this,just download/clone this repo and run ___main.py___, and if you want to make changes to the scene, edit ___Spheres.py/All_features_Scene.py___ in ___Scene_files___ folder
+
 ## ChangeLog
 
 ### May 31,2021
@@ -20,10 +23,6 @@ This is a simple implementation of a Ray Tracer in Python 3.
 
 ### May13,2021
 * Included support for Multi-core Rendering
-
-
-## Instructions
-If you want to complie this,just download/clone this repo and run ___main.py___, and if you want to make changes to the scene, edit ___Spheres.py/All_features_Scene.py___ in ___Scene_files___ folder
 
 ## Features
 ### Shading
