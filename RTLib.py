@@ -1,8 +1,7 @@
-from math import tan, cosh, radians, pi, log
+from math import *
 from random import uniform
 from PIL import Image
 from multiprocessing import Process, cpu_count, Manager
-
 
 
 ###_____CLASSES_____###
@@ -63,26 +62,25 @@ class Color:
 	def __str__(self):
 		return f"{self.r} {self.g} {self.b}"
 	def __add__(self, c):
-		return Color((self.r + c.r), (self.g + c.g), (self.b + c.b))
+		if type(c) == int:
+			return Color(self.r+c, self.g+c, self.b+c)
+		else:
+			return Color((self.r + c.r), (self.g + c.g), (self.b + c.b))
 	def __iadd__(self, c):
 		return Color((self.r + c.r), (self.g + c.g), (self.b + c.b))
 
 	def __mul__(self, scl):
 		return Color((self.r *scl) , (self.g *scl), (self.b *scl))	
+
 	def __truediv__(self, scl):
-		return Color((self.r /scl) , (self.g /scl), (self.b /scl))	
+		return self*(1/scl)
 	def __pow__(self, scl):
 		return Color((self.r **scl), (self.g**scl), (self.b**scl))
 	def __eq__(self, c):
-		if self.r == c.r and self.g==c.g and self.b==c.b:
+		if ((self.r == c.r) and (self.g==c.g) and (self.b==c.b)):
 			return True
 		return False
-
-	def clip(self, a=0, b=1):
-		return Color(min(b, max(a, self.r)), min(b, max(a, self.g)), min(b, max(a, self.b)) )
-		
-	def mix_mul(self, c):
-		return Color((self.r * c.r), (self.g*c.g), (self.b*c.b))
+	
 
 	def to_hex_q(self, chnl):
 		bpc = 4*chnl
@@ -91,35 +89,46 @@ class Color:
 		gh = max(hex(gq)[2:], "0"*chnl)
 		bh = max(hex(bq)[2:], "0"*chnl)
 		return f"#{rh}{gh}{bh}"
-	
-	
-	def quantize(self,bpc=8):		
-		qv = 2**bpc -1
-		return ( min(int(self.r*qv),qv),
-				min(int(self.g*qv),qv),
-				min(int(self.b*qv),qv) )		
-	
-	def HLG_Curve(self, exp=1):	
-		def logc(E):
-			a,b,c = 0.17883277, 0.28466892, 0.55991073
-			
-			if E <= 1:
-				Ed = .5*(E)**.5	
-			else:
-				Ed = a*log(E-b) + c
-			return Ed
-		
-		self = self*exp
-		self.r = logc(self.r)
-		self.g = logc(self.g)
-		self.b = logc(self.b)
-	
-		return self
 
-	
+	#_CUSTOM-LOG-CURVE
+	def U_Log_Curve(self,exp=1):
+		
+		def fn(ev):
+			if not(ev):
+				return 0
+			return (2.39+log10(ev))/4.31
+
+		self *= exp
+		return Color(fn(self.r), fn(self.g), fn(self.b))
+
+
+	#_HYBRID-LOG-GAMMA	
+	def HLG_Curve(self, exp=1):	
+		
+		def fn(E):
+			a,b,c = 0.17883277, 0.28466892, 0.55991073
+			return (.5*(E)**.5) if (E<= 1) else (a*log(E-b) + c)
+		
+		self*=exp
+		return Color(fn(self.r), fn(self.g), fn(self.b))
+
+
+	#_GAMMA	
 	def Gamma_Curve(self, exp=1, gamma=.45):
 		return (self*exp)**gamma
 
+	
+	def quantize(self,bpc=8,clip =False):		
+		qv = 2**bpc -1
+		r,g,b =( min(int(self.r*qv),qv),
+					min(int(self.g*qv),qv),
+					min(int(self.b*qv),qv) )		
+		
+		if clip:
+			if (r == g == b == 255):
+				return(255,0,0)
+
+		return (r,g,b)
 
 
 class Material:
@@ -157,7 +166,8 @@ class Scene:
 		
 		self.bkg = Color(0,0,0)
 		self.f_name = "render"
-	
+		self.post = None
+		self.clip = False
 
 class Camera:
 	def __init__(self, loc, v_at,up, fov, W,H):
@@ -172,21 +182,19 @@ class Camera:
 		self.near_clip = 1e-10
 		self.far_clip = 1e10
 
-		self.img_PlaneH = tan(self.fov)
-		self.img_PlaneW = self.img_PlaneH * W/H		
+		self.iPH = tan(self.fov)
+		self.iPW = self.iPH * W/H		
 		
 		self.type = "PERS"
-		#self.scatter = 0
-		#self.CellSizeHf = self.img_PlaneW/(W*2)
 				
 	def CamRay(self,x,y):
-		RD = (x*self.img_PlaneW)
-		UD = (y*self.img_PlaneH)
+		RD = (x*self.iPW)
+		UD = (y*self.iPH)
 		
-		ray_dir = self.forw + (self.right*RD) + (self.up*UD)
+		ray_dir = (self.forw + (self.right*RD) + (self.up*UD))
 		
 		if self.type == "PERS":
-			return Ray(self.loc, ray_dir.normalize())
+			return Ray(self.loc, ray_dir)
 		elif self.type == "ORTHO":
 			return Ray(ray_dir,self.forw)
 			
@@ -409,7 +417,7 @@ class Shader:
 		return diff_col
 	
 	def spec(self, N,H):
-		spec_col = self.light_color * (((1-self.obj.material.roughness)*self.light_ints) * max(0, N.dot(H))**self.obj.material.spec_const() )
+		spec_col = self.light_color * (((1-self.obj.material.roughness)) * max(0, N.dot(H))**self.obj.material.spec_const() )
 		return spec_col
 	
 	def isShadow(self,L,Ld):
@@ -470,7 +478,7 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 	
 			#_Shadow_Detection
 			if (Light.shadows and shader.isShadow(L,D)):
-				Total_Color += obj.material.color *.05
+				Total_Color += obj.material.color *.005
 			
 			#_Flat_Surface
 			elif obj.material.flat:
@@ -492,10 +500,10 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 
 		
 		ref_cond = (depth < scene.depth and
-					scene.reflections and
-					obj.material.reflect and
-					not (obj.material.flat) and
-					obj.material.type!="EMMIT")
+						scene.reflections and
+						obj.material.reflect and
+						not (obj.material.flat) and
+						obj.material.type!="EMMIT")
 		if ref_cond:
 			if scene.samples == 1:
 				adpt_smpls = 1
@@ -523,7 +531,7 @@ def Minutes(t):
 	return (f"\n{m}m : {s}s")
 
 
-def  nearest_hit(objs, f_clip, ray, dist=True):
+def nearest_hit(objs, f_clip, ray, dist=True):
 	min_hit = f_clip
 	n_obj = None
 	
@@ -550,21 +558,45 @@ def ColorAt(scene,Shdr,x,y):
 	if nearest_obj:
 		hit_pt = (cam_ray.loc + (cam_ray.dir*hit_dist))		
 		PixelColor = Ray_Trace(scene, nearest_obj, hit_pt, (cam_ray.loc - hit_pt), Shdr)
-		
-		if PixelColor:	
+
+
+		if PixelColor:
+	
+			#_linear-to-ColorSpaces
 			if scene.curve == "HLG":
-				return (PixelColor.HLG_Curve(exp=scene.exposure).quantize(scene.bpc))
+				PixelColor = (PixelColor.HLG_Curve(exp=scene.exposure).quantize(scene.bpc,scene.clip))
+			elif scene.curve == "U-LOG":
+				PixelColor = (PixelColor.U_Log_Curve(exp=scene.exposure).quantize(scene.bpc,scene.clip))
 			elif scene.curve == "GAMMA":
-				return (PixelColor.Gamma_Curve(exp=scene.exposure).quantize(scene.bpc))			
+				PixelColor = (PixelColor.Gamma_Curve(exp=scene.exposure).quantize(scene.bpc, scene.clip))			
 			elif scene.curve == "LINEAR":
-				return (PixelColor.quantize(scene.bpc))
-			else:
-				return (PixelColor.quantize(scene.bpc))
-		else:
-			return None
+				PixelColor = (PixelColor.quantize(scene.bpc))
+		return PixelColor
 
 
-def Render(scene, thds=8):
+
+#MultiProcessingStuff_for_rendering_parts_of_image
+def RangeRender(y_lim,x_lim, t_id, bkgcol, ImgDict, scene, shader):
+			
+	H = 1 + (y_lim[-1] - y_lim[0])
+	W = 1 + (x_lim[-1] - x_lim[0])
+
+	i_temp = Image.new("RGB", (W, H), bkgcol)
+		
+	for y in y_lim:
+		Prog = round((100*(y)/(y_lim[-1])),2)
+		print(f"{t_id}\t{Prog}", end="\r")
+			
+		for x in x_lim:
+			col = ColorAt(scene, shader, x,y)
+			if col:
+				xi,yi = (x-x_lim[0]), (y-y_lim[0])
+				i_temp.putpixel((xi,yi), (col))
+
+	ImgDict[t_id] = i_temp
+
+
+def Render(scene,ImgDict, thds=8):
 	def DivideRanges(rS, rE, parts):
 		pSize = (rE-rS)//parts
 		Div_lst = []
@@ -574,25 +606,6 @@ def Render(scene, thds=8):
 	
 			Div_lst.append(range(s,e))
 		return Div_lst, pSize
-		
-	
-	#MultiProcessingStuff_for_rendering_parts_of_image
-	def RangeRender(y_lim,x_lim, t_id, scene, shader):
-			
-		H = 1 + (y_lim[-1] - y_lim[0])
-		W = 1 + (x_lim[-1] - x_lim[0])
-		i_temp = Image.new("RGB", (W, H) )
-		
-		for y in y_lim:
-			Prog = round((100*(y)/(y_lim[-1])),2)
-			print(f"{t_id}\t{Prog}", end="\r")
-			
-			for x in x_lim:
-				col = ColorAt(scene, shader, x,y)
-				if col:
-					xi,yi = (x-x_lim[0]), (y-y_lim[0])
-					i_temp.putpixel((xi,yi), (col))
-		ImgDict[t_id] = i_temp
 	
 	
 	#RenderBody
@@ -635,17 +648,17 @@ def Render(scene, thds=8):
 		RngLst,blockH = DivideRanges(0, scene.H, thds) #divisions of height
 	
 
-	#_Assign_Main_Returnable_Image		
+	#_Assign_Main_Returnable_Image
+	DefaultBk = scene.bkg.quantize()	
 	Img = Image.new("RGB", (ImgW, ImgH))	
 	
 	#_Assign_Chunks_to_different_processes
 	TaskLst = []
-		
 	Link = Manager()
 	ImgDict = Link.dict()
-		
+	
 	for idx, Render_H in enumerate(RngLst):
-		p = Process(target=RangeRender, args=(Render_H,Render_W, idx, scene, shader))
+		p = Process(target=RangeRender, args=(Render_H,Render_W, idx, DefaultBk, ImgDict, scene, shader))
 		TaskLst.append(p)
 	
 	for task in TaskLst:
@@ -658,4 +671,5 @@ def Render(scene, thds=8):
 	for key in range(len(RngLst)):
 		tImg = ImgDict[key]
 		Img.paste(tImg, (0,key*blockH))
+
 	return Img
