@@ -71,7 +71,8 @@ class Color:
 
 	def __mul__(self, scl):
 		return Color((self.r *scl) , (self.g *scl), (self.b *scl))	
-
+	def mixmul(self, c):
+		return Color((self.r*c.r), (self.g*c.g), (self.b*c.b))
 	def __truediv__(self, scl):
 		return self*(1/scl)
 	def __pow__(self, scl):
@@ -488,7 +489,7 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 			#_Shaded_Surface
 			else:
 				if obj.material.type == "GLOSS":
-					Total_Color += obj.material.color + shader.spec(NormalVec, HalfVec)
+					Total_Color += shader.spec(NormalVec, HalfVec)
 					
 				elif obj.material.type == "DIFFUSE":
 					Total_Color += shader.diffuse(NormalVec, L)
@@ -596,7 +597,7 @@ def RangeRender(y_lim,x_lim, t_id, bkgcol, ImgDict, scene, shader):
 	ImgDict[t_id] = i_temp
 
 
-def Render(scene,ImgDict, thds=8):
+def Render(scene, thds=8):
 	def DivideRanges(rS, rE, parts):
 		pSize = (rE-rS)//parts
 		Div_lst = []
