@@ -1,7 +1,7 @@
-from math import *
+from math import radians, tan, pi, log
 from random import uniform
 from PIL import Image
-from multiprocessing import Process, cpu_count, Manager
+from multiprocessing import Process, Manager
 
 
 ###_____CLASSES_____###
@@ -406,7 +406,7 @@ class Cube:
 #__Shader__
 class Shader:
 	
-	def init(self):
+	def __init__(self):
 		self.obj = None
 		self.hit_loc = None
 		self.objects = None
@@ -467,18 +467,18 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 		NormalVec = obj.normal(hit_pt).normalize()
 		
 		
-		for Light in scene.lights:
+		for LightSr in scene.lights:
 	
-			L = (Light.loc - hit_pt)
+			L = (LightSr.loc - hit_pt)
 			D = L.mag
 			HalfVec = (L + V).normalize()
 			L=L.normalize()
 	
-			shader.light_color = Light.color
-			shader.light_ints = (Light.ints/(4*pi*D*D))
+			shader.light_color = LightSr.color
+			shader.light_ints = (LightSr.ints/(4*pi*D*D))
 	
 			#_Shadow_Detection
-			if (Light.shadows and shader.isShadow(L,D)):
+			if (LightSr.shadows and shader.isShadow(L,D)):
 				Total_Color += obj.material.color *.005
 			
 			#_Flat_Surface
