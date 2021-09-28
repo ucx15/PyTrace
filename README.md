@@ -46,7 +46,7 @@ If you want to complie this,just download/clone this repo and run ___main.py___,
 ![Area Light,Soft Shadows](https://github.com/udit-uc828/Python_RayTracer/blob/ae673d7ec9ad4e5cfbf493ff1a8e786e0bd46cd1/Output/AreaLight%20Test%201586.15s.png)
 ![Teddy, Diffused Reflections](https://github.com/udit-uc828/Python_RayTracer/blob/ae673d7ec9ad4e5cfbf493ff1a8e786e0bd46cd1/Output/Teddy(Diffused%20Reflections)%206242.99s.png)
 ![Diamond, Triangles](https://github.com/udit-uc828/Python_RayTracer/blob/ae673d7ec9ad4e5cfbf493ff1a8e786e0bd46cd1/Output/Diamond(Triangle%20test)%20310.76.png)
-![Teddy Flat, 2D Capabilities)(https://github.com/udit-uc828/Python_RayTracer/blob/ae673d7ec9ad4e5cfbf493ff1a8e786e0bd46cd1/Output/Teddy(2D)%20101.68s.png)
+![Teddy Flat, 2D Capabilities](https://github.com/udit-uc828/Python_RayTracer/blob/ae673d7ec9ad4e5cfbf493ff1a8e786e0bd46cd1/Output/Teddy(2D)%20101.68s.png)
 
 
 ## Current Limitations
