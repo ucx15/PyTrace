@@ -1,7 +1,6 @@
 from math import radians, tan, pi, log
 from random import uniform
 from multiprocessing import Process, Manager
-from time import time
 from PIL import Image
 
 
@@ -611,14 +610,13 @@ def Render(scene, thds=8):
 	#_Assign_Chunks_to_different_processes
 	TaskLst = []
 	ImgList = Manager().list()
-	Img = Image.new("RGBA", (ImgW, ImgH))	
+	Img = Image.new("RGBA", (ImgW, ImgH), (0,0,0,255))	
 
 
 	for Render_H in (RngLst):
 		p = Process(target=Renderer, args=(ImgW,ImgH,Render_W,Render_H, ImgList, scene, shader))
 		TaskLst.append(p)
 	
-	T1 = time()
 	#_Start_Rendering
 	for task in TaskLst:
 		task.start()
@@ -628,12 +626,5 @@ def Render(scene, thds=8):
 	
 	for chnk in ImgList:
 		Img.paste(chnk, (0,0), chnk)
-	
-	T2 = time()
 
-	#_Timers	
-	TTS = T2 - T1 #TotalTimeSeconds
-	TTM = Minutes(TTS) #TotalTimeMinutes	
-	print(f"\nTotal: \t{TTS}\n{TTM}")
-	
-	Img.save(f"Output/{scene.f_name} {TTS}.png")
+	return Img

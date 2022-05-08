@@ -11,7 +11,7 @@ if __name__ == "__main__":
 	TotalTime_m = Minutes(TotalTime_s)
 	print(f"{TotalTime_s} \n {TotalTime_m}")
 
-	file_name = f"Output/ {scene.f_name} {TotalTime_s}"
+	file_name = f"Output\{scene.f_name} {TotalTime_s}"
 	out_frmt = "png"
 
 	img.save(f"{file_name}.{out_frmt}")
