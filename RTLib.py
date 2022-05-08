@@ -3,7 +3,7 @@ from random import uniform
 from multiprocessing import Process, Manager
 from time import time
 from PIL import Image
-
+from numba import jit
 
 ###_____CLASSES_____###
 
