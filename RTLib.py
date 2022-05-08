@@ -1,6 +1,7 @@
 from math import radians, tan, pi, log
 from random import uniform
 from multiprocessing import Process, Manager
+from time import time
 from PIL import Image
 
 
@@ -146,10 +147,10 @@ class Scene:
 
 		self.exposure = 1
 		self.curve = Encoder.ACES
-		self.gamma = 1/2.2
+		self.gamma = 1/2.6
 		self.crop = False
 		
-		self.bkg = Color(0,0,0)
+		self.bkg = (0,0,0,255)
 		self.f_name = "render"
 
 
@@ -394,27 +395,21 @@ class Shader:
 		self.light_color = None
 		self.light_ints = None
 	
-
-	def diffuse(self, N,L):
-		diff_col = self.obj.material.color * (self.light_ints * max(0, N.dot(L)) )
-		return diff_col
+	@staticmethod
+	def diffuse(N,L, color, l_int):
+		return color * (l_int * max(0, N.dot(L)) )
 	
-	def spec(self, N,H):
-		spec_col = (self.light_color *
-				(((1- self.obj.material.roughness) *
-				self.light_ints)*
-				max(0, N.dot(H))**self.obj.material.spec_const() ))
-		return spec_col
-
+	@staticmethod	
+	def spec(N,H, roughness, l_int, l_col, spec_const):
+		return (l_col * (((1- roughness) * l_int)*
+				max(0, N.dot(H))**spec_const() ))
 
 	def isShadow(self,L,Ld):
-		sdw_ray = Ray(self.hit_loc + L*0.0001, L)		
-		for obj in self.objects:
-			hit_pos = obj.intersect(sdw_ray)
-			if hit_pos and Ld > hit_pos and hit_pos > 0.0001:
-				return 1
-		else:
-			return None
+		sdw_ray = Ray(self.hit_loc + L*0.0001, L)
+		hit_pos = nearest_hit(self.objects, Ld, sdw_ray, 1)
+		
+		if hit_pos and hit_pos > 0.0001:
+			return 1
 
 		
 	def reflect(self,N,V):
@@ -424,12 +419,10 @@ class Shader:
 		R_Dir = (R * (1- self.obj.material.roughness))
 		if self.obj.material.roughness:
 			R_Dir += (N+Vec.RandVect())*self.obj.material.roughness
-
-		R_Dir.normalize()
 		R_Loc = self.hit_loc + (R_Dir*0.0001)	
 		
 		ref_ray = Ray(R_Loc, R_Dir)
-		
+				
 		min_hit = 1e90
 		min_o = None
 		for obj in self.objects:
@@ -473,8 +466,8 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 			HalfVec = (L + V).normalize()
 			L=L.normalize()
 	
-			shader.light_color = LightSr.color
-			shader.light_ints = (LightSr.ints/(4*pi*D*D))
+			light_color = LightSr.color
+			light_ints = (LightSr.ints/(4*pi*D*D))
 	
 			#_Shadow_Detection
 			if (LightSr.shadows and shader.isShadow(L,D)):
@@ -488,22 +481,41 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 			#_Shaded_Surface
 			else:
 				if obj.material.type == "GLOSS":
-					Total_Color += obj.material.color + shader.spec(NormalVec, HalfVec)
+					Total_Color += shader.spec(NormalVec,
+												HalfVec,
+												obj.material.roughness,
+												light_ints,
+												light_color,
+												obj.material.spec_const)
 					
 				elif obj.material.type == "DIFFUSE":
-					Total_Color += shader.diffuse(NormalVec, L)
+					Total_Color += shader.diffuse(NormalVec,
+													L,
+													obj.material.color,
+													light_ints)
 				
 				elif obj.material.type == "EMMIT":
 					Total_Color += obj.material.color
 				else:
-					Total_Color += (shader.spec(NormalVec, HalfVec) + shader.diffuse(NormalVec, L))
-
+					Total_Color += (shader.spec(NormalVec,
+												HalfVec,
+												obj.material.roughness,
+												light_ints,
+												light_color,
+												obj.material.spec_const) + 
+									
+									shader.diffuse(NormalVec,
+													L,
+													obj.material.color,
+													light_ints))
+				
+					
 		
 		ref_cond = (depth < scene.depth and
-				scene.reflections and
-				obj.material.reflect and
-				not (obj.material.flat) and
-				obj.material.type!="EMMIT")
+						scene.reflections and
+						obj.material.reflect and
+						not (obj.material.flat) and
+						obj.material.type!="EMMIT")
 		if ref_cond:
 			if scene.samples == 1:
 				adpt_smpls = 1
@@ -514,7 +526,7 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 			for _ in range(adpt_smpls):
 				Ref_O, Ref_V = shader.reflect(NormalVec, V)
 				if Ref_O:
-					smpl_col = Ray_Trace(scene, Ref_O, Ref_V,(Ref_V - hit_pt).normalize(), shader, depth+1)
+					smpl_col = Ray_Trace(scene, Ref_O, Ref_V,(hit_pt - Ref_V).normalize(), shader, depth+1)
 					ref_col+=smpl_col if smpl_col else Color(0,0,0)
 			Total_Color += (ref_col/adpt_smpls)
 				
@@ -523,7 +535,7 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 	return None
 
 
-def nearest_hit(objs, f_clip, ray, dist=True):
+def nearest_hit(objs, f_clip, ray, dist=False):
 	min_hit = f_clip
 	n_obj = None
 	
@@ -534,10 +546,10 @@ def nearest_hit(objs, f_clip, ray, dist=True):
 			min_hit = t
 			n_obj = obj
 	
-	if dist:
+	if not dist:
 		return n_obj, min_hit
 	else:
-		return True if n_obj else False
+		return min_hit if (n_obj and min_hit != f_clip) else False
 
 
 def ColorAt(scene,Shdr,x,y):		
@@ -610,13 +622,14 @@ def Render(scene, thds=8):
 	#_Assign_Chunks_to_different_processes
 	TaskLst = []
 	ImgList = Manager().list()
-	Img = Image.new("RGBA", (ImgW, ImgH), (0,0,0,255))	
+	Img = Image.new("RGBA", (ImgW, ImgH), scene.bkg)	
 
 
 	for Render_H in (RngLst):
 		p = Process(target=Renderer, args=(ImgW,ImgH,Render_W,Render_H, ImgList, scene, shader))
 		TaskLst.append(p)
 	
+	T1 = time()
 	#_Start_Rendering
 	for task in TaskLst:
 		task.start()
@@ -626,5 +639,12 @@ def Render(scene, thds=8):
 	
 	for chnk in ImgList:
 		Img.paste(chnk, (0,0), chnk)
+	
+	T2 = time()
 
-	return Img
+	#_Timers	
+	TTS = T2 - T1 #TotalTimeSeconds
+	TTM = Minutes(TTS) #TotalTimeMinutes	
+	print(f"\nTotal: \t{TTS}\n{TTM}")
+	
+	Img.save(f"Output/{scene.f_name} {TTS}.png")
