@@ -3,7 +3,7 @@ from random import uniform
 from multiprocessing import Process, Manager
 from time import time
 from PIL import Image
-from numba import jit
+
 
 ###_____CLASSES_____###
 
@@ -147,7 +147,7 @@ class Scene:
 
 		self.exposure = 1
 		self.curve = Encoder.ACES
-		self.gamma = 1/2.6
+		self.gamma = 1/2.2
 		self.crop = False
 		
 		self.bkg = (0,0,0,255)

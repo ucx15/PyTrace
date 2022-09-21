@@ -24,7 +24,7 @@ obj_lst = [Sp1, Sp2, P]
 
 
 #_LIGHTS
-L1 = Light(Vec(-20, -20, 20), 25000, shadows=True) #Key
+L1 = Light(Vec(-20, -20, 20), 18000, shadows=True) #Key
 L2 = Light(Vec(0,-20,1), 200) #Fill
 
 light_lst = [L1, L2]
@@ -44,5 +44,4 @@ scene = Scene(obj_lst, cam, light_lst, W,H)
 
 scene.reflections = True
 scene.samples = 1 #reflection samples (1-128), can be >128 @cost of speed
-scene.depth = 2   #reflection depth (0-2), can be >2 @cost of speed
-scene.exposure = 2
+scene.depth = 2
