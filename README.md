@@ -42,12 +42,11 @@ If you want to complie this,just download/clone this repo and run ___main.py___,
 * Perspective and Orthographic Camera
 * Multi-core Rendering
 
-![All Features](https://github.com/udit-uc828/Python_RayTracer/blob/ae673d7ec9ad4e5cfbf493ff1a8e786e0bd46cd1/Output/%20render%20461.82015800476074.png)
-![Area Light,Soft Shadows](https://github.com/udit-uc828/Python_RayTracer/blob/ae673d7ec9ad4e5cfbf493ff1a8e786e0bd46cd1/Output/AreaLight%20Test%201586.15s.png)
-![Teddy, Diffused Reflections](https://github.com/udit-uc828/Python_RayTracer/blob/ae673d7ec9ad4e5cfbf493ff1a8e786e0bd46cd1/Output/Teddy(Diffused%20Reflections)%206242.99s.png)
-![Diamond, Triangles](https://github.com/udit-uc828/Python_RayTracer/blob/ae673d7ec9ad4e5cfbf493ff1a8e786e0bd46cd1/Output/Diamond(Triangle%20test)%20310.76.png)
-![Teddy Flat, 2D Capabilities](https://github.com/udit-uc828/Python_RayTracer/blob/ae673d7ec9ad4e5cfbf493ff1a8e786e0bd46cd1/Output/Teddy(2D)%20101.68s.png)
-
+![All Features](Imgs/AllFeatures_53.46111607551575.png)
+![Area Light, Soft Shadows](Imgs/AreaLight_Test_1586.15s.png)
+![Teddy, Diffused Reflections](Imgs/Teddy(Diffused%20Reflections)_6242.99s.png)
+![Diamond, Triangles](Imgs/Diamond(Triangle%20test)_310.76.png)
+![Teddy Flat, 2D Capabilities](Imgs/Teddy(2D)_101.68s.png)
 
 ## Current Limitations
 * Sampling not available for anti-aliasing (SuperSampling)
