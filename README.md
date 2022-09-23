@@ -4,24 +4,30 @@ This is a simple implementation of a Ray Tracer in Python 3.
 
 ## Dependencies
 * PILLOW
+* Pygame
 
 ## Instructions
-If you want to complie this,just download/clone this repo and run ___main.py___, and if you want to make changes to the scene, import chosen scene in main.py file and edit chosen file in ___Scene_files___ folder
+Run __[main.py](main.py)__
+
+Changing the scene can be done by importing the other scene in __line 2__ of __[main.py](main.py)__ from __[Res/Scene_files](Res/Scene_files)__ or by creating on yourself. Changes can be done in respective scene file in __[Res/Scene_files](Res/Scene_files)__.
 
 ## ChangeLog
 
-### May 31,2021
+### Sept 23, 2022
+* Removed Hybrid-Log Gamma tonemapping curve.
+* Now using pygame for ```Vec``` and ```Color``` classes instead of self implemented Python classes, for speed.
+### May 31, 2021
 * Included Support for Area Lights
 * Support for Soft Shadows
 * Added Quad as a Composite Object
 
-### May 22,2021 
+### May 22, 2021 
 * Added Triangle as a Primitive Object
 * Added Cube as a Composite Object
 * Included Support for High Dynamic Range Rendering using Hybrid-Log Gamma Curve
 * Included Support for Region Rendering
 
-### May13,2021
+### May13, 2021
 * Included support for Multi-core Rendering
 
 ## Features
@@ -40,7 +46,7 @@ If you want to complie this,just download/clone this repo and run ___main.py___,
 * Planes
 * Triangles
 * Perspective and Orthographic Camera
-* Multi-core Rendering
+* Multi-Threaded Rendering
 
 ![All Features](Imgs/AllFeatures_53.46111607551575.png)
 ![Area Light, Soft Shadows](Imgs/AreaLight_Test_1586.15s.png)
@@ -49,12 +55,16 @@ If you want to complie this,just download/clone this repo and run ___main.py___,
 ![Teddy Flat, 2D Capabilities](Imgs/Teddy(2D)_101.68s.png)
 
 ## Current Limitations
-* Sampling not available for anti-aliasing (SuperSampling)
+* No Anti-aliasing (SuperSampling)
 * No GUI
 
 
-Some Limitations will be removed in coming days..
-I did this as a fun project to increase my knowledge in Python(especially OOP)
+Most of the Limitations will be removed in future commits..
+I did this as a fun project to increase my knowledge in Python.
 
-___Thanks for reading!___
-You can also contribute and improve
+</br>
+</br>
+
+__Thanks for reading!__ 🙂
+
+*Your contribution will be appreciated.*
