@@ -48,11 +48,12 @@ Changing the scene can be done by importing the other scene in __line 2__ of __[
 * Perspective and Orthographic Camera
 * Multi-Threaded Rendering
 
-![All Features](Imgs/AllFeatures_53.46111607551575.png)
-![Area Light, Soft Shadows](Imgs/AreaLight_Test_1586.15s.png)
-![Teddy, Diffused Reflections](Imgs/Teddy(Diffused%20Reflections)_6242.99s.png)
-![Diamond, Triangles](Imgs/Diamond(Triangle%20test)_310.76.png)
-![Teddy Flat, 2D Capabilities](Imgs/Teddy(2D)_101.68s.png)
+
+| Some  | Examples |
+| ------------- | ------------- |
+|<img src="Imgs/AllFeatures_53.46111607551575.png" width="200"/>|<img src="Imgs/AreaLight_Test_1586.15s.png" width="200"/>|
+|<img src="Imgs/Teddy(Diffused%20Reflections)_6242.99s.png" width="200"/>|<img src="Imgs/Diamond(Triangle%20test)_310.76.png" width="200"/>|
+|<img src="Imgs/Teddy(2D)_101.68s.png" width="200"/>||
 
 ## Current Limitations
 * No Anti-aliasing (SuperSampling)
