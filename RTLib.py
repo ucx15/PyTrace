@@ -1,52 +1,17 @@
-from math import radians, tan, pi, log
+from math import radians, tan, pi
 from random import uniform
 from multiprocessing import Process, Manager
 from time import time
 from PIL import Image
+import pygame
 
 
 ###_____CLASSES_____###
 
-#__vectors__
-class Vec:
-	def __init__(self, i,j,k):
-		self.i = i
-		self.j = j
-		self.k = k
-		
-	def __str__(self):
-		return f"{round(self.i,2)} {round(self.j,2)} {round(self.k,2)}"
-	def __neg__(self):
-		return Vec(-self.i, -self.j, -self.k)
-	def __add__(self, v):
-		return Vec((self.i + v.i), (self.j + v.j), (self.k + v.k))	
-	def __iadd__(self, v):
-		return Vec((self.i + v.i), (self.j + v.j), (self.k + v.k))	
-	def __sub__(self, v):
-		return Vec((self.i - v.i), (self.j - v.j), (self.k - v.k))	
-	def __mul__(self, scl):
-		return Vec((self.i *scl), (self.j *scl), (self.k *scl))	
-	def __truediv__(self, scl):
-		return Vec((self.i /scl), (self.j /scl), (self.k /scl))
-	def __eq__(self, v):
-		if (self.i == v.i) and (self.j==v.j) and (self.k==v.k):
-			return True
-		return False
-	
-	def mag(self):
-		return self.dot(self) ** .5
-	def mag_sq(self):
-		return self.dot(self)
-	
-	def normalize(self):
-		mag = self.mag()
-		return Vec(self.i/mag, self.j/mag, self.k/mag)		
-	def dot(self, v):
-		return (self.i * v.i) + (self.j*v.j) + (self.k*v.k)	
-	def cross(self, v):
-		return Vec((self.j*v.k - self.k*v.j), -(self.i*v.k - self.k*v.i), (self.i*v.j - self.j*v.i))	
-	@staticmethod
-	def RandVect():
+Vec = pygame.Vector3
+Color = pygame.Vector3
+
+def RandVect():
 		return Vec(uniform(-1,1), uniform(-1,1), uniform(-1,1))
 
 
@@ -60,30 +25,7 @@ class Ray:
 
 
 
-#____Colors_&_Materials____
-
-class Color:
-	def __init__(self, r,g,b):
-		self.r = r
-		self.g = g
-		self.b = b
-	
-	def __str__(self):
-		return f"{self.r} {self.g} {self.b}"
-	def __add__(self, c):
-		return Color((self.r + c.r), (self.g + c.g), (self.b + c.b))
-	def __iadd__(self, c):
-		return Color((self.r + c.r), (self.g + c.g), (self.b + c.b))
-	def __mul__(self, scl):
-		return Color((self.r *scl) , (self.g *scl), (self.b *scl))
-	def __truediv__(self, scl):
-		return self*(1/scl)
-	def __eq__(self, c):
-		if ((self.r == c.r) and (self.g==c.g) and (self.b==c.b)):
-			return True
-		return False
-	
-
+#____Material____
 class Encoder:
 	
 	#ACES
@@ -91,34 +33,27 @@ class Encoder:
 	def ACES(x):
 		a,b,c,d,e = 0.0245786, 0.000090537, 0.983729, 0.4329510, 0.238081
 		return max(0, (x*(x+a) - b) / (x * (x*c + d) + e))
-	
-	#_HYBRID-LOG-GAMMA
-	@staticmethod	
-	def HLG(x):	
-		a,b,c = 0.17883277, 0.28466892, 0.55991073
-		return (.5*(x)**.5) if (x<= 1) else (a*log(x-b) + c)
-	
-	#ToneMap
-	@staticmethod
-	def Tonemap(C, fn):
-		return Color(fn(C.r), fn(C.g), fn(C.b))
-	
+
 	@staticmethod
 	def Gamma(C, gm):
-		return Color(C.r**gm, C.g**gm, C.b**gm)
-	
+		return Color(C.x**gm, C.y**gm, C.z**gm)
+
 	@staticmethod
 	def quantize(c, bpc=8):		
 		qv = int(2**bpc -1)
-		r,g,b= ((min(int(c.r*qv),qv)),
-				(min(int(c.g*qv),qv)),
-				(min(int(c.b*qv),qv)) )
-		return r,g,b
+		c *= qv
+		return ((min(int(c.x), qv)),
+				(min(int(c.y), qv)),
+				(min(int(c.z), qv)) )
+
 
 	@staticmethod
-	def encode(c, crv, ev, gm):
-		if crv:
-			c = Encoder.Tonemap(c*ev, crv)
+	def encode(c, crv = "", ev = 1, gm = 2.2):
+		c *= ev
+
+		if crv == "ACES":
+			c = Color(Encoder.ACES(c.x), Encoder.ACES(c.y), Encoder.ACES(c.z))
+		
 		return Encoder.quantize(Encoder.Gamma(c, gm))	
 
 
@@ -151,7 +86,7 @@ class Scene:
 
 
 		self.exposure = 1
-		self.curve = Encoder.ACES
+		self.curve = "ACES"
 		self.gamma = 1/2.2
 		self.crop = False
 		
@@ -259,7 +194,7 @@ class Sphere:
 			return None
 			
 	def normal(self, v):
-		return Vec((v.i - self.loc.i), (v.j - self.loc.j), (v.k - self.loc.k)).normalize()
+		return (v - self.loc).normalize()
 
 
 class Plane:
@@ -423,7 +358,7 @@ class Shader:
 		
 		R_Dir = (R * (1- self.obj.material.roughness))
 		if self.obj.material.roughness:
-			R_Dir += (N+Vec.RandVect())*self.obj.material.roughness
+			R_Dir += (N+RandVect())*self.obj.material.roughness
 		R_Loc = self.hit_loc + (R_Dir*0.0001)	
 		
 		ref_ray = Ray(R_Loc, R_Dir)
@@ -467,7 +402,7 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 		for LightSr in scene.lights:
 	
 			L = (LightSr.loc - hit_pt)
-			D = L.mag()
+			D = L.magnitude()
 			HalfVec = (L + V).normalize()
 			L=L.normalize()
 	
@@ -480,7 +415,6 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 			
 			#_Flat_Surface
 			elif obj.material.flat:
-				
 				Total_Color += obj.material.color
 			
 			#_Shaded_Surface

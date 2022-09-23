@@ -38,24 +38,26 @@ obj_lst = [RHand, LHand,
 
 
 #_____#_Materials_#______
-sd = True
+sd = False
 
-body = Material(Color(0, 0.15, 1), shade=sd)
-armLeg = Material(Color(1, 0.5, 0.25), shade=sd)
+body = Material(Color(0, 0.15, 1), rough=.5, flat=sd)
+
+armLeg = Material(Color(1, 0.5, 0.25), rough=.5, flat=sd)
+
 eye = Material(Color(1, 1, 1),
-				reflect=False,
-				rough= 0.2,shade=sd)
+				rough= 0.2, reflect= False, flat=sd)
+
 pupil = Material(Color(0.05, 0.05, 0.05),
-				reflect=False,
-				rough=0,shade=sd)
+				rough=0, flat=sd)
+
 mouth = Material(Color(1, 0, 0.2),
-				rough=.9,shade=sd)
+				rough=.9, flat=sd)
 
 eth = Material(Color(0, 0.8, 0.2),
-				type="DIFFUSE",shade=sd)
+				type="DIFFUSE", rough=1, reflect=False, flat=sd)
 
 
-sky = Color(.25, 0.5, 0.7)
+sky = (64, 128, 180)
 
 #assign
 Body.material = body
@@ -92,7 +94,7 @@ scene = Scene(obj_lst,
 			light_lst,
 			W, H)
 
-scene.reflections = True
+scene.reflections = False
 scene.samples = 32
-scene.depth = 2
+scene.depth = 1
 scene.bkg = sky
