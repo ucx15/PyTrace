@@ -13,7 +13,6 @@ class Vec:
 		self.i = i
 		self.j = j
 		self.k = k
-		self.mag = (i*i  +  j*j  +  k*k)**.5
 		
 	def __str__(self):
 		return f"{round(self.i,2)} {round(self.j,2)} {round(self.k,2)}"
@@ -33,9 +32,15 @@ class Vec:
 		if (self.i == v.i) and (self.j==v.j) and (self.k==v.k):
 			return True
 		return False
-			
+	
+	def mag(self):
+		return self.dot(self) ** .5
+	def mag_sq(self):
+		return self.dot(self)
+	
 	def normalize(self):
-		return Vec(self.i/self.mag, self.j/self.mag, self.k/self.mag)		
+		mag = self.mag()
+		return Vec(self.i/mag, self.j/mag, self.k/mag)		
 	def dot(self, v):
 		return (self.i * v.i) + (self.j*v.j) + (self.k*v.k)	
 	def cross(self, v):
@@ -462,7 +467,7 @@ def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 		for LightSr in scene.lights:
 	
 			L = (LightSr.loc - hit_pt)
-			D = L.mag
+			D = L.mag()
 			HalfVec = (L + V).normalize()
 			L=L.normalize()
 	
