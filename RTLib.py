@@ -1,6 +1,6 @@
 from math import radians, tan, pi
 from random import uniform
-from multiprocessing import Process, Manager
+from multiprocessing import Pool
 from time import time
 from PIL import Image
 import pygame
@@ -11,10 +11,6 @@ import pygame
 Vec = pygame.Vector3
 Color = pygame.Vector3
 
-def RandVect():
-		return Vec(uniform(-1,1), uniform(-1,1), uniform(-1,1))
-
-
 class Ray:
 	def __init__(self, loc, dir):
 		self.loc = loc
@@ -22,7 +18,6 @@ class Ray:
 	
 	def __str__(self):
 		return ("loc: " +str(self.loc)+"\ndir: "+str(self.dir))
-
 
 
 #____Material____
@@ -378,7 +373,8 @@ class Shader:
 
 
 ###______FUNCTIONS_____###
-#_Utility_functions
+
+# Utilities
 def Minutes(t):
 	s = round((t%60), 4)
 	m = int(t)//60
@@ -388,8 +384,11 @@ def DivideRanges(strt, end, parts):
 	n = end//parts
 	return [range(i, min(end, i+n)) for i in range(strt, end, n)]
 
+def RandVect():
+	return Vec(uniform(-1,1), uniform(-1,1), uniform(-1,1))
 
-#_Main_Functions
+
+# Main Functions
 def Ray_Trace(scene, obj,hit_pt,V, shader, depth=0):
 	
 	if obj and (obj.material.shade) and (depth <= scene.depth):
@@ -504,9 +503,10 @@ def ColorAt(scene,Shdr,x,y):
 			return PixelColor
 
 
-def Renderer(w,h, rw,rh, ImgList, scene, shader):	
-	Block = Image.new("RGBA", (w,h) )
+def Renderer(arglst):
+	w,h, rw,rh, scene, shader = arglst
 
+	Block = Image.new("RGBA", (w,h) )
 	for y in rh:
 		Prog = round((100*(y)/(rh[-1])),2)
 		print(f"{Prog}", end="\r")	
@@ -515,11 +515,10 @@ def Renderer(w,h, rw,rh, ImgList, scene, shader):
 			col = ColorAt(scene, shader, x,y)
 			if col:
 				Block.putpixel((x,y), Encoder.encode(col, scene.curve, scene.exposure, scene.gamma))
-	ImgList.append(Block)
+	return Block
 
 
-
-def Render(scene, thds=8):
+def Render(scene, thds=4):
 	#__RENDER_BODY__
 
 	#_resolving_AreaLights_to_pointLights
@@ -546,7 +545,7 @@ def Render(scene, thds=8):
 	scene.objects = shader.objects = Object_List
 
 
-	#_Dividing_height_to_smallerChunks
+	# Assigning chunks for processing
 	if scene.crop:
 		CrpW, CrpH = scene.crop["x"], scene.crop["y"]
 		ImgW,ImgH = (CrpW[1]-CrpW[0]), (CrpH[1]-CrpH[0])
@@ -558,24 +557,17 @@ def Render(scene, thds=8):
 		RngLst = DivideRanges(0, scene.H, thds) #divisions of height
 
 
-	#_Assign_Chunks_to_different_processes
-	TaskLst = []
-	ImgList = Manager().list()
-	Img = Image.new("RGBA", (ImgW, ImgH), scene.bkg)	
-
-
-	for Render_H in (RngLst):
-		p = Process(target=Renderer, args=(ImgW,ImgH,Render_W,Render_H, ImgList, scene, shader))
-		TaskLst.append(p)
-	
+	# 
 	T1 = time()
-	#_Start_Rendering
-	for task in TaskLst:
-		task.start()
-	
-	for task in TaskLst:
-		task.join()
-	
+
+	Img = Image.new("RGBA", (ImgW, ImgH), scene.bkg)
+	argsList = [[ImgW,ImgH,Render_W, Render_H, scene, shader] for Render_H in RngLst]
+
+	# Rendering
+	with Pool(thds) as p:
+		ImgList = p.map(Renderer, argsList)
+
+	# Combining chunks
 	for chnk in ImgList:
 		Img.paste(chnk, (0,0), chnk)
 	
