@@ -1,0 +1,88 @@
+{	
+	"Scene":
+	{
+		"size"       : [2160, 1080],
+		"name"       : "All_Features",
+		"reflections": 1,
+		"depth"      : 1,
+		"samples"    : 1
+	},
+
+	"Objects":
+	[
+		{
+			"type": "sphere",
+			"uuid"  : "sp1",
+			"loc" : [-4, 0, 0],
+			"rad" : 1.95
+		},
+		{
+			"type": "sphere",
+			"uuid"  : "sp2",
+			"loc" : [0, 0, 0],
+			"rad" : 1.95
+		},
+		{
+			"type": "sphere",
+			"uuid"  : "sp3",
+			"loc" : [4, 0, 0],
+			"rad" : 1.95
+		},
+		{
+			"type": "plane",
+			"uuid"  : "pln",
+			"loc" : [0, 0, -1.95],
+			"nor" : [0, 0, 1]
+		}
+	],
+
+	"Materials":
+	[
+		{
+			"uuid" : "red" ,
+			"color": [1, 0, 0],
+			"assign": ["sp1"]
+		},
+		{
+			"uuid" : "metal",
+			"color": [0,0,0],
+			"assign": ["sp2"]
+
+		},
+		{
+			"uuid" : "blue",
+			"color": [0, 0.07, 1],
+			"roughness": 1,
+			"reflect" : 0,
+			"assign": ["sp3"]
+
+		},
+		{
+			"uuid" : "gry" ,
+			"color" : [0.6, 0.6, 0.6],
+			"reflect": 0,
+			"assign": ["pln"]
+		}
+	],
+
+	"Lights":
+	[
+		{
+			"loc": [-20, -20, 20],
+			"power":    18000,
+			"shadows": 1
+		},
+		{
+			"loc": [0, -20, 1],
+			"power": 200
+		}
+	],
+
+	"Camera": 
+	{
+		"loc": [0, -10, 3],
+		"at" : [0,0,0],
+		"up" : [0,0,1],
+		"fov": 24
+	}
+}

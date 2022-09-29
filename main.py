@@ -1,16 +1,20 @@
 from RTLib import Render
-from Res.Scene_files.All_features_Scene import scene
+
+
+def main():
+	path = "Res/Scene_files/All_features_Scene.json"
+	# path = "Res/Scene_files_local/example.json"
+	
+	Render(path)
+
 
 if __name__ == "__main__":
-	print("\nRendering")
-	Render(scene)
+	main()
 
 
 # TODO: Raw output of floating point buffer
-# TODO: JSON serialization for storing scenes
-# TODO: Maybe use numpy arrays
-# TODO: Energy Conservation
-# TODO: Documentation
+# TODO: Fresnel effect for Reflection and refraction
 # TODO: Show output as pygame surface for progress tracking
 # TODO: GUI for scene creation and editing
-# TODO: Fresnel effect for Reflection and refraction
+# TODO: Energy Conservation
+# TODO: Maybe use numpy arrays
