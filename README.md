@@ -33,7 +33,7 @@ Changing the scene can be done by importing the other scene in __line 2__ of __[
 
 |Some  | Examples |
 | ------------- | ------------- |
-|<img src="Imgs/AllFeatures_53.46111607551575.png" width="400"/>|<img src="Imgs/AreaLight_Test_1586.15s.png" width="400"/>|
+|<img src="Imgs/AllFeatures22.070155599998543.png" width="400"/>|<img src="Imgs/AreaLight_Test_1586.15s.png" width="400"/>|
 |<img src="Imgs/Teddy(Diffused%20Reflections)_6242.99s.png" width="400"/>|<img src="Imgs/Diamond(Triangle%20test)_310.76.png" width="400"/>|
 |<img src="Imgs/Teddy(2D)_101.68s.png" width="400"/>||
 
