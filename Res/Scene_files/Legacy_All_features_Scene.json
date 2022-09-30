@@ -1,53 +1,91 @@
-# TODO : JSON Conversion
+{	
+	"Scene":
+	{
+		"size"       : [1920, 1080],
+		"name"       : "Legacy_All_Features",
+		"reflections": 1,
+		"depth"      : 2,
+		"samples"    : 16
+	},
 
-W, H =  1920, 1080
+	"Objects":
+	[
+		{
+			"type": "sphere",
+			"uuid"  : "sp1",
+			"loc" : [-4.1, 0, 0],
+			"rad" : 2
+		},
+		{
+			"type": "sphere",
+			"uuid"  : "sp2",
+			"loc" : [0, 0, 0],
+			"rad" : 2
+		},
+		{
+			"type": "sphere",
+			"uuid"  : "sp3",
+			"loc" : [4.1, 0, 0],
+			"rad" : 2
+		},
+		{
+			"type": "plane",
+			"uuid"  : "pln",
+			"loc" : [0, 0, -2],
+			"nor" : [0, 0, 1]
+		}
+	],
 
-#__OBJECTS
+	"Materials":
+	[
+		{
+			"uuid" : "red" ,
+			"color": [1, 0, 0],
+			"rough": 0,
+			"assign": ["sp1"]
+		},
+		{
+			"uuid" : "metal",
+			"color": [0,0,0],
+			"type" : "GLOSS",
+			"rough": 0,
+			"assign": ["sp2"]
 
-#initialize
-BR = 2        #radius
-Sp1 = Sphere(Vec(-4.1,0,0), BR)
-Sp2 = Sphere(Vec(0,0,0), BR)
-Sp3 = Sphere(Vec(4.1,0,0), BR)
-P = Plane(Vec(0, 0, -BR), Vec(0, 0, 1))
+		},
+		{
+			"uuid" : "blue",
+			"color": [0, 0.07, 1],
+			"roughness": 0.1,
+			"reflect" : 0,
+			"assign": ["sp3"]
 
-#set_materials
-red = Material(Color(1, 0,0), rough=0)
-metal = Material(type="GLOSS",rough=0)
-white = Material(reflect=False)
-blue = Material(Color(0,.07, 1), rough=.1)
+		},
+		{
+			"uuid" : "white" ,
+			"color" : [1, 1, 1],
+			"reflect": 0,
+			"assign": ["pln"]
+		}
+	],
 
+	"Lights":
+	[
+		{
+			"loc": [-20, -20, 20],
+			"power":    25000,
+			"shadows": 1
+		},
+		{
+			"loc": [0, -20, 1],
+			"power": 300
+		}
+	],
 
-Sp1.material = red
-Sp2.material = metal
-Sp3.material = blue
-P.material = white
-
-obj_lst = [Sp1,Sp2, Sp3, P]
-
-
-#_LIGHTS
-L1 = Light(Vec(-20, -20, 20), 2.5E4)     #Key
-L2 = Light(Vec(0,-20,1), 300) #Fill
-L1.shadows = 1
-
-light_lst = [L1, L2]
-
-#_CAMERA
-c_loc = Vec(0, -10, 3)
-c_at = Sp2.loc
-c_up = Vec(0,0,1)
-c_fov = 24
-
-cam = Camera(c_loc,c_at,c_up,c_fov,W,H)
-
-
-##__SCENE__##
-
-scene = Scene(obj_lst, cam, light_lst, W,H)
-
-scene.reflections = True
-scene.samples = 16 #reflection samples (1-128), can be >128 @cost of speed
-scene.depth = 2   #reflection depth (0-2), can be >2 @cost of speed
-scene.exposure = 1
-#scene.crop = {"x":[180,300], "y":[20,100]}
+	"Camera": 
+	{
+		"loc": [0, -10, 3],
+		"at" : [0,0,0],
+		"up" : [0,0,1],
+		"fov": 24
+	}
+}

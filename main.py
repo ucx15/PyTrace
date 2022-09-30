@@ -12,6 +12,7 @@ if __name__ == "__main__":
 	main()
 
 
+# TODO: Implement a basic logging class
 # TODO: Raw output of floating point buffer
 # TODO: Fresnel effect for Reflection and refraction
 # TODO: Show output as pygame surface for progress tracking

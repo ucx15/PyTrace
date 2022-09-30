@@ -1,45 +1,72 @@
-# TODO : JSON Conversion
+{	
+	"Scene":
+	{
+		"size"       : [800, 600],
+		"name"       : "YellowBall",
+		"reflections": 1
+	},
 
+	"Objects":
+	[
+		{
+			"type": "sphere",
+			"uuid"  : "sp1",
+			"loc" : [0, 0, 0],
+			"rad" : 1
+		},
+		{
+			"type": "sphere",
+			"uuid"  : "sp2",
+			"loc" : [1, -1, -0.8],
+			"rad" : 0.2
+		},
+		{
+			"type": "plane",
+			"uuid"  : "pln",
+			"loc" : [0, 0, -1],
+			"nor" : [0, 0, 1]
+		}
+	],
 
-W, H =  800, 600
+	"Materials":
+	[
+		{
+			"uuid" : "yellow" ,
+			"color": [1, 0.15, 0],
+			"assign": ["sp1"]
+		},
+		{
+			"uuid" : "blue",
+			"color": [0, 0.3, 1],
+			"assign": ["sp2"]
 
-#__OBJECTS
+		},
+		{
+			"uuid" : "gry" ,
+			"color" : [0.05, 0.05, 0.05],
+			"reflect": 0,
+			"assign": ["pln"]
+		}
+	],
 
-#initialize
-SP = Sphere(Vec(0,0,0), 1)
-SP2 = Sphere(Vec(1,-1,-0.8),0.2)
-GP = Plane(Vec(0,0,-1), Vec(0,0,1))
+	"Lights":
+	[
+		{
+			"loc": [8, -10, 20],
+			"power":    20000,
+			"shadows": 1,
+			"type" : "AREA",
+			"At" : [0,0,0],
+			"edge" : 4,
+			"sdwsmpls" : 16
+		}
+	],
 
-objs = [SP,SP2,GP]
-
-
-#_materials
-ball = Material(Color(1,.15,0))
-smball = Material(Color(0,.3,1))
-floor = Material(Color(.05,.05,.05) , reflect=0)
-
-SP.material = ball
-SP2.material = smball
-GP.material = floor
-
-#_LIGHTS
-L = Light(Vec(8,-10,20), 20000, shadows=True,
-			type="AREA",At=Vec(0,0,0),
-			edge=4, sdwsmpls= 16)
-
-light_lst = [L]
-
-
-
-#_CAMERA
-c_loc = Vec(0,-7.5, 1.5)
-c_at = SP.loc
-c_up = Vec(0,0,1)
-c_fov = 18
-
-cam = Camera(c_loc,c_at,c_up,c_fov,W,H)
-
-
-##__SCENE__##
-scene = Scene(objs,cam, light_lst, W,H)
-scene.reflections = True
+	"Camera": 
+	{
+		"loc": [0, -7.5, 1.5],
+		"at" : [0,0,0],
+		"up" : [0,0,1],
+		"fov": 18
+	}
+}

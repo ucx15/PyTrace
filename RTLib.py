@@ -227,10 +227,14 @@ class Scene:
 
 	@staticmethod
 	def DeSerialize(path : str):
-		print("Loading Scene")
+		print(f"\nINFO : Loading File '{path}'")
+		
 		with open(path, "r") as file:
-			data = json.loads(file.read())
-
+			try:
+				data = json.loads(file.read())
+			except json.decoder.JSONDecodeError:
+				print(f"ERROR: File '{path}' could not be loaded!\nFATAL: Aborted!\n")
+				exit(1)
 
 		# Scene Settings
 		scene = Scene()
